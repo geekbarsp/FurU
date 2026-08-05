@@ -1,49 +1,47 @@
 "use client";
 import Image from "next/image";
 import {
-  Apple,
   CheckCircle2,
   Download,
-  Monitor,
   ShieldCheck,
-  Smartphone,
   XCircle,
 } from "lucide-react";
+import { FaAndroid, FaApple, FaLinux, FaWindows } from "react-icons/fa6";
 import { useFeedback } from "@/components/FeedbackProvider";
 
 const platforms = [
   {
     name: "Android",
     detail: "Android 10 or newer · Phone and tablet",
-    icon: Smartphone,
+    icon: FaAndroid,
     available: true,
     label: "Get Android app",
   },
   {
     name: "iOS",
     detail: "iOS 16 or newer · iPhone and iPad",
-    icon: Apple,
+    icon: FaApple,
     available: true,
     label: "Get iOS app",
   },
   {
     name: "Windows",
     detail: "Windows 10 or newer · 64-bit",
-    icon: Monitor,
+    icon: FaWindows,
     available: true,
     label: "Download for Windows",
   },
   {
     name: "macOS",
     detail: "macOS 13 Ventura or newer · Apple silicon and Intel",
-    icon: Apple,
+    icon: FaApple,
     available: true,
     label: "Download for Mac",
   },
   {
     name: "Linux",
     detail: "Ubuntu, Fedora, and other distributions",
-    icon: Monitor,
+    icon: FaLinux,
     available: false,
     label: "Not supported",
   },

@@ -2406,6 +2406,10 @@ body:before {
   place-items: center;
   color: var(--green);
 }
+.platform-icon svg {
+  width: 25px;
+  height: 25px;
+}
 .platform-card p {
   margin: 5px 0 0;
   font-size: 0.78rem;
