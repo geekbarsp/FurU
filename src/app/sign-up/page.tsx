@@ -239,11 +239,11 @@ function Field({
         type={type}
         minLength={minLength ?? (type === "password" ? 8 : undefined)}
         maxLength={maxLength}
+        placeholder={label === "Username" ? "4–15 characters" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required
       />
-      {label === "Username" && <small>4–15 characters</small>}
     </div>
   );
 }
