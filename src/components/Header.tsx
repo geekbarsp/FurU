@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   LogOut,
@@ -9,7 +10,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { signOut, useAccount } from "@/lib/furu-store";
 import { useFeedback } from "./FeedbackProvider";
 import logo4k from "../../public/images/logo-4k-transparent.png";
@@ -23,6 +24,8 @@ const links = [
 export default function Header() {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
   const account = useAccount();
   const { notify } = useFeedback();
   const visibleLinks = account
@@ -35,6 +38,16 @@ export default function Header() {
     setAccountOpen(false);
     setOpen(false);
     notify("You’re signed out.", "info");
+  }
+  function refreshActivePage(
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string,
+  ) {
+    if (pathname !== href) return;
+    event.preventDefault();
+    setOpen(false);
+    router.refresh();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   const first = account?.name.split(" ")[0];
   return (
@@ -52,7 +65,11 @@ export default function Header() {
         </Link>
         <div className="nav-links">
           {visibleLinks.map(([href, label]) => (
-            <Link key={href} href={href}>
+            <Link
+              key={href}
+              href={href}
+              onClick={(event) => refreshActivePage(event, href)}
+            >
               {label}
             </Link>
           ))}
@@ -140,7 +157,14 @@ export default function Header() {
         {open && (
           <div className="menu-panel">
             {visibleLinks.map(([href, label]) => (
-              <Link onClick={() => setOpen(false)} key={href} href={href}>
+              <Link
+                onClick={(event) => {
+                  setOpen(false);
+                  refreshActivePage(event, href);
+                }}
+                key={href}
+                href={href}
+              >
                 {label}
               </Link>
             ))}
