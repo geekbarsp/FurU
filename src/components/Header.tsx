@@ -25,6 +25,11 @@ export default function Header() {
   const [accountOpen, setAccountOpen] = useState(false);
   const account = useAccount();
   const { notify } = useFeedback();
+  const visibleLinks = account
+    ? links
+    : links.filter(
+        ([href]) => href !== "/browse" && href !== "/listings/new",
+      );
   async function leave() {
     await signOut();
     setAccountOpen(false);
@@ -46,7 +51,7 @@ export default function Header() {
           />
         </Link>
         <div className="nav-links">
-          {links.map(([href, label]) => (
+          {visibleLinks.map(([href, label]) => (
             <a key={href} href={href}>
               {label}
             </a>
@@ -134,7 +139,7 @@ export default function Header() {
         </div>
         {open && (
           <div className="menu-panel">
-            {links.map(([href, label]) => (
+            {visibleLinks.map(([href, label]) => (
               <a onClick={() => setOpen(false)} key={href} href={href}>
                 {label}
               </a>
