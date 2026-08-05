@@ -1,12 +1,340 @@
 "use client";
-import Image from "next/image";import Link from "next/link";import { Bell,CalendarDays,Heart,LayoutDashboard,MessageCircle,PlusCircle,ShieldCheck } from "lucide-react";import { useState } from "react";import { pets } from "@/lib/data";import PetCard from "@/components/PetCard";import { useFeedback } from "@/components/FeedbackProvider";
-const configs={Adopter:{metrics:[["4","Favorites"],["2","Applications"],["1","Upcoming visit"],["75%","Verified"]],title:"Your adoption journey"},Guardian:{metrics:[["3","Active listings"],["8","Applicants"],["2","Meet-ups"],["100%","Verified"]],title:"Your rehoming overview"},Organization:{metrics:[["24","Pets in care"],["16","Applications"],["6","Staff members"],["83%","Placement rate"]],title:"Organization overview"}};
-const tabs=[["Overview",LayoutDashboard],["Favorites",Heart],["Messages",MessageCircle],["Appointments",CalendarDays],["Verification",ShieldCheck],["Notifications",Bell]] as const;
-export default function Dashboard(){const [role,setRole]=useState<keyof typeof configs>("Adopter");const [tab,setTab]=useState("Overview");const c=configs[role];const {notify}=useFeedback();return <main className="page dashboard-page"><div className="shell"><div className="dashboard-welcome"><div><span className="eyebrow">A calm little command center</span><h2>{c.title}</h2><p>Welcome back, Sam. Here&apos;s what needs your attention.</p></div><select className="input role-select" value={role} onChange={e=>{setRole(e.target.value as keyof typeof configs);setTab("Overview")}} aria-label="Switch demo role"><option>Adopter</option><option>Guardian</option><option>Organization</option></select></div><div className="dashboard-grid"><aside className="sidebar"><b className="sidebar-title">Demo workspace</b>{tabs.map(([label,Icon])=><button type="button" className={tab===label?"active":""} onClick={()=>setTab(label)} key={label}><Icon size={17}/>{label}</button>)}</aside><div>
- {tab==="Overview"&&<><div className="metric-grid">{c.metrics.map(([v,l])=><div className="metric" key={l}><b>{v}</b><span>{l}</span></div>)}</div><div className="panel"><div className="panel-head"><h3>{role==="Adopter"?"Recent applications":"Recent activity"}</h3>{role!=="Adopter"&&<Link href="/listings/new" className="btn btn-primary btn-small"><PlusCircle size={16}/> Add pet</Link>}</div>{[[pets[0],"Under Review","Updated 2 hours ago"],[pets[3],"Meet-and-Greet Scheduled","Saturday · 10:30 AM"],[pets[4],"Draft","Last edited yesterday"]].map(([p,s,t])=>{const pet=p as typeof pets[number];return <div className="application-row" key={pet.id}><Link href={`/pets/${pet.id}`} className="row-pet"><Image src={pet.image} alt="" width={52} height={52}/><span><b>{pet.name}</b><br/><small>{pet.organization}</small></span></Link><span className="status">{String(s)}</span><small>{String(t)}</small></div>})}</div><div className="panel soft-panel"><h3>A gentle reminder</h3><p>Finish your verification when you have a quiet moment. Your saved work will be here.</p><button className="btn btn-dark btn-small" onClick={()=>setTab("Verification")}>Continue verification</button></div></>}
- {tab==="Favorites"&&<div><div className="section-head compact-head"><div><span className="eyebrow">Saved with care</span><h2>Your favorites</h2></div></div><div className="cards">{pets.slice(0,3).map(p=><PetCard key={p.id} pet={p}/>)}</div></div>}
- {tab==="Messages"&&<DashboardList title="Recent conversations" rows={[["Paws & Paths Rescue","Luna's foster sent a new update."],["Second Spring Rescue","Your visit with Bruno is confirmed."]]} action="Open messages" href="/messages"/>}
- {tab==="Appointments"&&<DashboardList title="Upcoming appointments" rows={[["Meet Bruno","Saturday · 10:30 AM · Pasig"],["Phone interview","Tuesday · 4:00 PM · Online"]]} action="Manage schedule" href="/appointments"/>}
- {tab==="Verification"&&<div className="panel"><h3>Verification progress</h3><p>Identity, email, and phone are verified. Your exact documents stay private.</p><div className="progress"><span/></div><button className="btn btn-primary" onClick={()=>notify("Proof-of-address upload is ready in demo mode.")}>Upload proof of address</button></div>}
- {tab==="Notifications"&&<DashboardList title="Notifications" rows={[["Application update","Luna's application moved to Under Review."],["Care reminder","Bruno's meet-and-greet is in three days."],["Profile tip","Add your housing preference to improve matches."]]} action="Mark all as read" onAction={()=>notify("All notifications marked as read.")}/>} </div></div></div></main>}
-function DashboardList({title,rows,action,href,onAction}:{title:string;rows:string[][];action:string;href?:string;onAction?:()=>void}){return <div className="panel"><div className="panel-head"><h3>{title}</h3>{href?<Link className="btn btn-primary btn-small" href={href}>{action}</Link>:<button className="btn btn-ghost btn-small" onClick={onAction}>{action}</button>}</div>{rows.map(([name,detail])=><div className="application-row" key={name}><div><b>{name}</b><p className="row-detail">{detail}</p></div><span className="status">Active</span></div>)}</div>}
+import Link from "next/link";
+import { useState } from "react";
+import {
+  Bell,
+  CheckCircle2,
+  ClipboardList,
+  HeartHandshake,
+  Home,
+  MessageCircle,
+  PlusCircle,
+  ShieldCheck,
+  UserCheck,
+} from "lucide-react";
+import { getAdoptionLock, getListings, useAccount } from "@/lib/furu-store";
+import { useFeedback } from "@/components/FeedbackProvider";
+const tabs = [
+  ["Overview", Home],
+  ["My pets", HeartHandshake],
+  ["Applicants", UserCheck],
+  ["Monitoring", ShieldCheck],
+  ["Messages", MessageCircle],
+  ["Notifications", Bell],
+] as const;
+export default function Dashboard() {
+  const account = useAccount();
+  const [tab, setTab] = useState("Overview");
+  const { notify } = useFeedback();
+  if (!account)
+    return (
+      <main className="page">
+        <div className="shell">
+          <div className="form-card form-head">
+            <h2>Your dashboard is private.</h2>
+            <p>Sign in to manage pet listings, applicants, and monitoring.</p>
+            <Link href="/sign-in" className="btn btn-primary">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  const listings = getListings(account.email);
+  const lock = getAdoptionLock(account.email);
+  const first = account.name.split(" ")[0];
+  return (
+    <main className="page dashboard-page">
+      <div className="shell">
+        <div className="dashboard-welcome">
+          <div>
+            <span className="eyebrow">Guardian workspace</span>
+            <h2>Good to see you, {first}.</h2>
+            <p>
+              Everything you need to find a responsible next home—and follow
+              through.
+            </p>
+          </div>
+          <Link href="/listings/new" className="btn btn-primary">
+            <PlusCircle size={18} /> Rehome another pet
+          </Link>
+        </div>
+        <div className="dashboard-grid">
+          <aside className="sidebar">
+            <b className="sidebar-title">Your workspace</b>
+            {tabs.map(([label, Icon]) => (
+              <button
+                type="button"
+                className={tab === label ? "active" : ""}
+                onClick={() => setTab(label)}
+                key={label}
+              >
+                <Icon size={17} />
+                {label}
+              </button>
+            ))}
+          </aside>
+          <div>
+            {tab === "Overview" && (
+              <>
+                <section className="metric-grid">
+                  <Metric
+                    value={String(listings.length)}
+                    label="Pet listings"
+                  />
+                  <Metric value={String(listings.filter((x) => x.status === "Published").length)} label="Published" />
+                  <Metric value="0" label="New applicants" />
+                  <Metric value="0" label="In monitoring" />
+                </section>
+                {lock ? (
+                  <div className="eligibility-card locked">
+                    <ShieldCheck />
+                    <div>
+                      <span className="eyebrow">
+                        Adoption eligibility paused
+                      </span>
+                      <h3>One pet at a time, with full support.</h3>
+                      <p>{lock.message}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="eligibility-card">
+                    <CheckCircle2 />
+                    <div>
+                      <span className="eyebrow">Eligible to adopt</span>
+                      <h3>
+                        You have no active adoption review or monitoring period.
+                      </h3>
+                      <p>
+                        You may browse and apply. Once you submit, new
+                        applications pause until the current review or
+                        monitoring closes.
+                      </p>
+                    </div>
+                    <Link href="/browse" className="btn btn-ghost btn-small">
+                      Browse pets
+                    </Link>
+                  </div>
+                )}
+                <div className="panel">
+                  <div className="panel-head">
+                    <div>
+                      <span className="eyebrow">Your pets</span>
+                      <h3>Rehoming activity</h3>
+                    </div>
+                    <Link
+                      href="/listings/new"
+                      className="btn btn-primary btn-small"
+                    >
+                      <PlusCircle size={16} /> Add a pet
+                    </Link>
+                  </div>
+                  {listings.length ? (
+                    <ListingRows listings={listings} />
+                  ) : (
+                    <Empty
+                      title="No pet listings yet"
+                      copy="Create a thoughtful profile and manage applicant screening, handover, and follow-up."
+                      action="Start a listing"
+                      href="/listings/new"
+                    />
+                  )}
+                </div>
+                <div className="guardian-steps">
+                  <div>
+                    <b>1. You publish</b>
+                    <span>Your pet appears immediately</span>
+                  </div>
+                  <div>
+                    <b>2. You choose</b>
+                    <span>Compare complete applicants</span>
+                  </div>
+                  <div>
+                    <b>3. Meet safely</b>
+                    <span>Plan a supported introduction</span>
+                  </div>
+                  <div>
+                    <b>4. We monitor</b>
+                    <span>Follow the pet’s adjustment</span>
+                  </div>
+                </div>
+              </>
+            )}
+            {tab === "My pets" && (
+              <div className="panel">
+                <div className="panel-head">
+                  <div>
+                    <span className="eyebrow">Managed by you</span>
+                    <h3>My pet listings</h3>
+                  </div>
+                  <Link
+                    href="/listings/new"
+                    className="btn btn-primary btn-small"
+                  >
+                    <PlusCircle size={16} /> New listing
+                  </Link>
+                </div>
+                {listings.length ? (
+                  <ListingRows listings={listings} />
+                ) : (
+                  <Empty
+                    title="Your first pet profile starts here"
+                    copy="Share their needs, personality, health, and ideal home."
+                    action="Rehome a pet"
+                    href="/listings/new"
+                  />
+                )}
+              </div>
+            )}
+            {tab === "Applicants" && (
+              <div className="panel">
+                <span className="eyebrow">Decide with context</span>
+                <h3>Applicant review</h3>
+                <Empty
+                  title="No applications to review"
+                  copy="When your listing is published, you’ll see verified profiles, household details, care plans, and references here. Contact details stay private until you choose to connect."
+                />
+              </div>
+            )}
+            {tab === "Monitoring" && (
+              <>
+                <div className="panel soft-panel">
+                  <span className="eyebrow">After the handover</span>
+                  <h3>30-day adjustment monitoring</h3>
+                  <p>
+                    FurU schedules check-ins with you and the new guardian.
+                    Welfare concerns can reopen the case, and the adopter cannot
+                    apply for another pet while monitoring is active.
+                  </p>
+                </div>
+                <div className="monitor-grid">
+                  <div>
+                    <b>Day 2</b>
+                    <span>Arrival and safety check</span>
+                  </div>
+                  <div>
+                    <b>Day 7</b>
+                    <span>Routine and health update</span>
+                  </div>
+                  <div>
+                    <b>Day 14</b>
+                    <span>Behavior and adjustment</span>
+                  </div>
+                  <div>
+                    <b>Day 30</b>
+                    <span>Placement review</span>
+                  </div>
+                </div>
+              </>
+            )}
+            {tab === "Messages" && (
+              <div className="panel">
+                <h3>Messages</h3>
+                <Empty
+                  title="No conversations yet"
+                  copy="Conversations with approved applicants will appear here. FurU keeps early contact inside the platform for safety."
+                />
+              </div>
+            )}
+            {tab === "Notifications" && (
+              <div className="panel">
+                <div className="panel-head">
+                  <h3>Notifications</h3>
+                  <button
+                    className="btn btn-ghost btn-small"
+                    onClick={() => notify("Notifications marked as read.")}
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+                {listings.map((x) => (
+                  <div className="application-row" key={x.id}>
+                    <div>
+                      <b>{x.name} was submitted</b>
+                      <p className="row-detail">The pet profile is live and ready for adopters to discover.</p>
+                    </div>
+                    <Status text={x.status} />
+                  </div>
+                ))}
+                {!listings.length && (
+                  <Empty
+                    title="You’re all caught up"
+                    copy="Listing, applicant, handover, and monitoring updates will appear here."
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="metric">
+      <b>{value}</b>
+      <span>{label}</span>
+    </div>
+  );
+}
+function Status({ text }: { text: string }) {
+  return (
+    <span
+      className={`status status-${text.toLowerCase().replaceAll(" ", "-")}`}
+    >
+      {text}
+    </span>
+  );
+}
+function ListingRows({
+  listings,
+}: {
+  listings: ReturnType<typeof getListings>;
+}) {
+  return (
+    <>
+      {listings.map((x) => (
+        <div className="listing-row" key={x.id}>
+          <div className="listing-avatar">{x.name.charAt(0).toUpperCase()}</div>
+          <div>
+            <b>{x.name}</b>
+            <p>
+              {x.breed} · {x.age} · {x.location}
+            </p>
+          </div>
+          <Status text={x.status} />
+          <button className="btn btn-ghost btn-small" type="button">
+            Manage
+          </button>
+        </div>
+      ))}
+    </>
+  );
+}
+function Empty({
+  title,
+  copy,
+  action,
+  href,
+}: {
+  title: string;
+  copy: string;
+  action?: string;
+  href?: string;
+}) {
+  return (
+    <div className="dashboard-empty">
+      <ClipboardList size={32} />
+      <div>
+        <b>{title}</b>
+        <p>{copy}</p>
+      </div>
+      {action && href && (
+        <Link href={href} className="btn btn-dark btn-small">
+          {action}
+        </Link>
+      )}
+    </div>
+  );
+}
