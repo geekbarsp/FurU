@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import PetCard from "@/components/PetCard";
 import { pets } from "@/lib/data";
+import { useAccount } from "@/lib/furu-store";
 import logo4k from "../../public/images/logo-4k-transparent.png";
 
 const PetScene = dynamic(() => import("@/components/PetScene"), {
@@ -46,6 +47,7 @@ const reveal = {
 export default function HomePage() {
   const introRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
+  const account = useAccount();
   const { scrollYProgress } = useScroll();
   const { scrollYProgress: intro } = useScroll({
     target: introRef,
@@ -131,14 +133,16 @@ export default function HomePage() {
               profiles, safer decisions, and support that continues after the
               handover.
             </p>
-            <div className="hero-actions">
-              <Link href="/listings/new" className="btn btn-primary">
-                Rehome a pet <ArrowRight size={18} />
-              </Link>
-              <Link href="/browse" className="btn btn-ghost">
-                Find a pet
-              </Link>
-            </div>
+            {account && (
+              <div className="hero-actions">
+                <Link href="/listings/new" className="btn btn-primary">
+                  Rehome a pet <ArrowRight size={18} />
+                </Link>
+                <Link href="/browse" className="btn btn-ghost">
+                  Find a pet
+                </Link>
+              </div>
+            )}
           </motion.div>
           <motion.div
             className="scroll-cue"
@@ -358,9 +362,11 @@ export default function HomePage() {
                   <li>Support a safe handover</li>
                 </ul>
               </div>
-              <Link href="/listings/new" className="btn btn-dark">
-                Create a pet profile <ArrowRight size={17} />
-              </Link>
+              {account && (
+                <Link href="/listings/new" className="btn btn-dark">
+                  Create a pet profile <ArrowRight size={17} />
+                </Link>
+              )}
             </motion.article>
             <motion.article
               className="journey adopt"
@@ -377,15 +383,18 @@ export default function HomePage() {
                   <li>Apply one pet at a time</li>
                 </ul>
               </div>
-              <Link href="/browse" className="btn btn-dark">
-                Meet the pets <ArrowRight size={17} />
-              </Link>
+              {account && (
+                <Link href="/browse" className="btn btn-dark">
+                  Meet the pets <ArrowRight size={17} />
+                </Link>
+              )}
             </motion.article>
           </div>
         </div>
       </section>
 
-      <section className="section featured-home">
+      {account && (
+        <section className="section featured-home">
         <div className="shell">
           <motion.div className="section-head" {...reveal}>
             <div>
@@ -408,9 +417,11 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+        </section>
+      )}
 
-      <section className="shell home-final">
+      {!account && (
+        <section className="shell home-final">
         <motion.div {...reveal}>
           <Sparkles />
           <span className="eyebrow">A safer second chance</span>
@@ -432,7 +443,8 @@ export default function HomePage() {
           <Home />
           <Heart fill="currentColor" />
         </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }
