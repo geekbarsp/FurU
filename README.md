@@ -1,4 +1,10 @@
-# FurU
+<p align="center">
+  <img src="public/images/logo-4k-transparent.png" alt="FurU" width="420" />
+</p>
+
+<h1 align="center">FurU</h1>
+
+## Overview
 
 FurU is a polished, responsive pet adoption and responsible rehoming experience built with Next.js, TypeScript, React Three Fiber, Framer Motion, React Hook Form-ready patterns, and Zod-ready service boundaries.
 
