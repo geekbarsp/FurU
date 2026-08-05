@@ -65,6 +65,12 @@ export default function HomePage() {
   const firstOpacity = useTransform(story, [0, 0.18, 0.31], [1, 1, 0]);
   const secondOpacity = useTransform(story, [0.25, 0.42, 0.63], [0, 1, 0]);
   const thirdOpacity = useTransform(story, [0.58, 0.75, 1], [0, 1, 1]);
+  const firstVisibility = useTransform(story, (value) =>
+    value > 0.31 ? "hidden" : "visible",
+  );
+  const secondVisibility = useTransform(story, (value) =>
+    value > 0.63 ? "hidden" : "visible",
+  );
   return (
     <main className="home-remaster">
       <motion.div
@@ -226,7 +232,7 @@ export default function HomePage() {
             </motion.div>
             <motion.article
               className="story-message message-one"
-              style={{ opacity: firstOpacity }}
+              style={{ opacity: firstOpacity, visibility: firstVisibility }}
             >
               <span className="story-number">01</span>
               <span className="eyebrow">Start honestly</span>
@@ -238,7 +244,7 @@ export default function HomePage() {
             </motion.article>
             <motion.article
               className="story-message message-two"
-              style={{ opacity: secondOpacity }}
+              style={{ opacity: secondOpacity, visibility: secondVisibility }}
             >
               <span className="story-number">02</span>
               <span className="eyebrow">Choose carefully</span>
