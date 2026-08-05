@@ -52,9 +52,9 @@ export default function Header() {
         </Link>
         <div className="nav-links">
           {visibleLinks.map(([href, label]) => (
-            <a key={href} href={href}>
+            <Link key={href} href={href}>
               {label}
-            </a>
+            </Link>
           ))}
         </div>
         <div className="nav-actions">
@@ -140,9 +140,9 @@ export default function Header() {
         {open && (
           <div className="menu-panel">
             {visibleLinks.map(([href, label]) => (
-              <a onClick={() => setOpen(false)} key={href} href={href}>
+              <Link onClick={() => setOpen(false)} key={href} href={href}>
                 {label}
-              </a>
+              </Link>
             ))}
             {account ? (
               <>
