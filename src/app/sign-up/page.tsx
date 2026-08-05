@@ -11,6 +11,12 @@ export default function SignUp() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     purpose: "Rehome a pet" as "Rehome a pet" | "Adopt a pet" | "Both",
+    accountRole: "guardian" as
+      | "guardian"
+      | "adopter"
+      | "guardian_adopter"
+      | "welfare_org",
+    organizationName: "",
     name: "",
     phone: "",
     location: "",
@@ -39,6 +45,11 @@ export default function SignUp() {
         phone: form.phone,
         location: form.location,
         purpose: form.purpose,
+        accountRole: form.accountRole,
+        organizationName:
+          form.accountRole === "welfare_org"
+            ? form.organizationName.trim()
+            : undefined,
       });
       setConfirmEmail(result.needsEmailConfirmation);
       setDone(true);
@@ -56,7 +67,11 @@ export default function SignUp() {
             <CheckCircle2 size={58} />
             <h2>Your space is ready.</h2>
             <p>
-              {confirmEmail
+              {form.accountRole === "welfare_org"
+                ? confirmEmail
+                  ? "Confirm your email first. FurU will review your organization before publishing tools are enabled."
+                  : "Your organization account is awaiting verification. You can open the dashboard, but publishing tools stay locked until approval."
+                : confirmEmail
                 ? "Check your email and confirm your address before signing in."
                 : "Your account and rehoming workspace are ready and securely connected."}
             </p>
@@ -64,6 +79,10 @@ export default function SignUp() {
               {confirmEmail ? (
                 <Link href="/sign-in" className="btn btn-primary">
                   Go to sign in
+                </Link>
+              ) : form.accountRole === "welfare_org" ? (
+                <Link href="/dashboard" className="btn btn-primary">
+                  Open dashboard
                 </Link>
               ) : (
                 <>
@@ -112,21 +131,48 @@ export default function SignUp() {
           </div>
           {step === 1 && (
             <div className="choice-grid">
-              {(["Rehome a pet", "Adopt a pet", "Both"] as const).map((p) => (
+              {(
+                [
+                  {
+                    role: "guardian",
+                    purpose: "Rehome a pet",
+                    label: "Guardian",
+                    copy: "Create listings and choose a responsible next home.",
+                  },
+                  {
+                    role: "adopter",
+                    purpose: "Adopt a pet",
+                    label: "Adopter",
+                    copy: "Browse pets and submit adoption applications.",
+                  },
+                  {
+                    role: "guardian_adopter",
+                    purpose: "Both",
+                    label: "Guardian + adopter",
+                    copy: "Use both journeys from one personal account.",
+                  },
+                  {
+                    role: "welfare_org",
+                    purpose: "Rehome a pet",
+                    label: "Welfare organization",
+                    copy: "Manage animals after FurU verifies your organization.",
+                  },
+                ] as const
+              ).map((choice) => (
                 <button
                   type="button"
-                  className={`purpose-card ${form.purpose === p ? "selected" : ""}`}
-                  onClick={() => update("purpose", p)}
-                  key={p}
+                  className={`purpose-card ${form.accountRole === choice.role ? "selected" : ""}`}
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      accountRole: choice.role,
+                      purpose: choice.purpose,
+                    })
+                  }
+                  key={choice.role}
                 >
-                  <b>{p}</b>
-                  <span>
-                    {p === "Rehome a pet"
-                      ? "Create listings and choose the right next home."
-                      : p === "Adopt a pet"
-                        ? "Browse pets and submit one application at a time."
-                        : "Manage both journeys from one account."}
-                  </span>
+                  <b>{choice.label}</b>
+                  <span>{choice.copy}</span>
                 </button>
               ))}
             </div>
@@ -152,6 +198,14 @@ export default function SignUp() {
                 value={form.location}
                 onChange={(v) => update("location", v)}
               />
+              {form.accountRole === "welfare_org" && (
+                <Field
+                  label="Registered organization name"
+                  wide
+                  value={form.organizationName}
+                  onChange={(v) => update("organizationName", v)}
+                />
+              )}
             </div>
           )}
           {step === 3 && (

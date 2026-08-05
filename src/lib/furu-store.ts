@@ -12,14 +12,25 @@ export type Account = {
   phone: string;
   location: string;
   purpose: "Rehome a pet" | "Adopt a pet" | "Both";
+  roles: ("guardian" | "adopter" | "welfare_org")[];
+  welfareOrgVerified: boolean;
+  organizationName?: string;
   createdAt: string;
   avatar?: string;
   bio?: string;
 };
 export type CreateAccountInput = Omit<
   Account,
-  "id" | "createdAt" | "avatar" | "bio"
-> & { password: string };
+  | "id"
+  | "createdAt"
+  | "avatar"
+  | "bio"
+  | "roles"
+  | "welfareOrgVerified"
+> & {
+  password: string;
+  accountRole: "guardian" | "adopter" | "guardian_adopter" | "welfare_org";
+};
 export type UserListing = {
   id: string;
   ownerEmail: string;
@@ -75,6 +86,9 @@ const KEYS = {
   listings: "furu-listings",
   applications: "furu-applications",
 };
+const prototypeFallbackEnabled =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH === "true";
 const emit = (next: StoreState) => {
   state = next;
   listeners.forEach((listener) => listener());
@@ -119,13 +133,30 @@ const mapApplication = (
 async function reload() {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {
+    if (!prototypeFallbackEnabled) {
+      emit({ ...initialState, ready: true });
+      return;
+    }
     const email = localStorage.getItem(KEYS.session) || "";
     const legacy =
       read<(Account & { password?: string })[]>(KEYS.accounts, []).find(
         (a) => a.email === email,
       ) || null;
     emit({
-      account: legacy ? { ...legacy, id: legacy.id || email } : null,
+      account: legacy
+        ? {
+            ...legacy,
+            id: legacy.id || email,
+            roles:
+              legacy.roles ||
+              (legacy.purpose === "Rehome a pet"
+                ? ["guardian"]
+                : legacy.purpose === "Adopt a pet"
+                  ? ["adopter"]
+                  : ["guardian", "adopter"]),
+            welfareOrgVerified: legacy.welfareOrgVerified || false,
+          }
+        : null,
       listings: read<UserListing[]>(KEYS.listings, []).map((x) =>
         (x.status as string) === "Under review"
           ? { ...x, status: "Published" }
@@ -167,6 +198,10 @@ async function reload() {
     purpose: (profile?.purpose ||
       metadata.purpose ||
       "Both") as Account["purpose"],
+    roles: (profile?.roles || metadata.roles || ["adopter"]) as Account["roles"],
+    welfareOrgVerified: Boolean(profile?.welfare_org_verified),
+    organizationName:
+      profile?.organization_name || metadata.organization_name || undefined,
     createdAt: String(profile?.created_at || user.created_at),
     avatar: profile?.avatar_url || undefined,
     bio: profile?.bio || undefined,
@@ -222,11 +257,14 @@ export async function createAccount(input: CreateAccountInput) {
       email: input.email,
       password: input.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         data: {
           username,
           phone: input.phone,
           location: input.location,
           purpose: input.purpose,
+          account_role: input.accountRole,
+          organization_name: input.organizationName || "",
         },
       },
     });
@@ -234,6 +272,8 @@ export async function createAccount(input: CreateAccountInput) {
     if (data.session) await reload();
     return { needsEmailConfirmation: !data.session };
   }
+  if (!prototypeFallbackEnabled)
+    throw new Error("Supabase is not configured for authentication.");
   const accounts = read<(Account & { password: string })[]>(KEYS.accounts, []);
   if (accounts.some((a) => a.email.toLowerCase() === input.email.toLowerCase()))
     throw new Error("An account with this email already exists.");
@@ -241,6 +281,11 @@ export async function createAccount(input: CreateAccountInput) {
     ...input,
     id: crypto.randomUUID(),
     name: username,
+    roles:
+      input.accountRole === "guardian_adopter"
+        ? (["guardian", "adopter"] as Account["roles"])
+        : ([input.accountRole] as Account["roles"]),
+    welfareOrgVerified: false,
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(KEYS.accounts, JSON.stringify([...accounts, account]));
@@ -259,6 +304,7 @@ export async function signIn(email: string, password: string) {
     await reload();
     return true;
   }
+  if (!prototypeFallbackEnabled) return false;
   const account = read<(Account & { password: string })[]>(
     KEYS.accounts,
     [],
@@ -270,6 +316,48 @@ export async function signIn(email: string, password: string) {
   localStorage.setItem(KEYS.session, account.email);
   await reload();
   return true;
+}
+
+export async function sendEmailOtp(email: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim().toLowerCase(),
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+    },
+  });
+  if (error) throw error;
+}
+
+export async function verifyEmailOtp(email: string, token: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: token.trim(),
+    type: "email",
+  });
+  if (error) throw error;
+  await reload();
+}
+
+export async function requestPasswordReset(email: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    { redirectTo: `${window.location.origin}/auth/callback?next=/update-password` },
+  );
+  if (error) throw error;
+}
+
+export async function updatePassword(password: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
 }
 export async function signOut() {
   const supabase = getSupabaseBrowserClient();
@@ -305,6 +393,8 @@ export async function updateAccount(
     await reload();
     return;
   }
+  if (!prototypeFallbackEnabled)
+    throw new Error("Supabase is not configured.");
   const accounts = read<Account[]>(KEYS.accounts, []);
   localStorage.setItem(
     KEYS.accounts,
@@ -342,21 +432,30 @@ export function getListings(email?: string) {
 export async function addListing(listing: UserListing) {
   const supabase = getSupabaseBrowserClient();
   if (supabase && state.account) {
-    const { error } = await supabase.from("pet_listings").insert({
-      owner_id: state.account.id,
-      name: listing.name,
-      animal_type: listing.type,
-      breed: listing.breed,
-      age: listing.age,
-      location: listing.location,
-      reason: listing.reason,
-      status: "Published",
-      details: listing.details || {},
+    const response = await fetch("/api/listings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: listing.name,
+        type: listing.type,
+        breed: listing.breed,
+        age: listing.age,
+        location: listing.location,
+        reason: listing.reason,
+        details: listing.details || {},
+      }),
     });
-    if (error) throw error;
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      throw new Error(result?.error || "Unable to create the listing.");
+    }
     await reload();
     return;
   }
+  if (!prototypeFallbackEnabled)
+    throw new Error("Sign in before creating a listing.");
   localStorage.setItem(
     KEYS.listings,
     JSON.stringify([listing, ...read<UserListing[]>(KEYS.listings, [])]),
@@ -371,22 +470,22 @@ export function getApplications(email?: string) {
 export async function addApplication(application: AdoptionApplication) {
   const supabase = getSupabaseBrowserClient();
   if (supabase && state.account) {
-    const { error } = await supabase.from("adoption_applications").insert({
-      applicant_id: state.account.id,
-      pet_key: application.petId,
-      pet_name: application.petName,
-      status: application.status,
+    const response = await fetch("/api/applications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ petId: application.petId, answers: {} }),
     });
-    if (error) {
-      if (error.code === "23505")
-        throw new Error(
-          "You already have an adoption under review or monitoring.",
-        );
-      throw error;
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      throw new Error(result?.error || "Unable to submit this application.");
     }
     await reload();
     return;
   }
+  if (!prototypeFallbackEnabled)
+    throw new Error("Sign in before submitting an application.");
   localStorage.setItem(
     KEYS.applications,
     JSON.stringify([

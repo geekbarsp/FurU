@@ -28,11 +28,15 @@ export default function Header() {
   const router = useRouter();
   const account = useAccount();
   const { notify } = useFeedback();
-  const visibleLinks = account
-    ? links
-    : links.filter(
-        ([href]) => href !== "/browse" && href !== "/listings/new",
-      );
+  const canAdopt = account?.roles.includes("adopter") ?? false;
+  const canRehome =
+    account?.roles.includes("guardian") ||
+    (account?.roles.includes("welfare_org") && account.welfareOrgVerified);
+  const visibleLinks = links.filter(([href]) => {
+    if (href === "/browse") return canAdopt;
+    if (href === "/listings/new") return Boolean(canRehome);
+    return true;
+  });
   async function leave() {
     await signOut();
     setAccountOpen(false);
@@ -77,12 +81,14 @@ export default function Header() {
         <div className="nav-actions">
           {account ? (
             <div className="account-wrap">
-              <Link
-                className="btn btn-primary btn-small dashboard-link"
-                href="/listings/new"
-              >
-                <PlusCircle size={16} /> Rehome a pet
-              </Link>
+              {canRehome && (
+                <Link
+                  className="btn btn-primary btn-small dashboard-link"
+                  href="/listings/new"
+                >
+                  <PlusCircle size={16} /> Rehome a pet
+                </Link>
+              )}
               <button
                 className="account-button"
                 onClick={() => setAccountOpen(!accountOpen)}
@@ -114,7 +120,13 @@ export default function Header() {
                     </span>
                     <div>
                       <b>{account.name}</b>
-                      <small>{account.purpose}</small>
+                      <small>
+                        {account.roles.includes("welfare_org")
+                          ? account.welfareOrgVerified
+                            ? "Verified welfare organization"
+                            : "Welfare verification pending"
+                          : account.roles.join(" + ")}
+                      </small>
                     </div>
                   </div>
                   <Link href="/dashboard" onClick={() => setAccountOpen(false)}>
@@ -123,12 +135,14 @@ export default function Header() {
                   <Link href="/profile" onClick={() => setAccountOpen(false)}>
                     <UserRound size={16} /> My profile
                   </Link>
-                  <Link
-                    href="/listings/new"
-                    onClick={() => setAccountOpen(false)}
-                  >
-                    <PlusCircle size={16} /> Rehome a pet
-                  </Link>
+                  {canRehome && (
+                    <Link
+                      href="/listings/new"
+                      onClick={() => setAccountOpen(false)}
+                    >
+                      <PlusCircle size={16} /> Rehome a pet
+                    </Link>
+                  )}
                   <button onClick={leave}>
                     <LogOut size={16} /> Sign out
                   </button>

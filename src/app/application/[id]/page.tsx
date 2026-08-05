@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,9 +13,12 @@ import {
 import { pets } from "@/lib/data";
 import { addApplication, useAccount, useApplications } from "@/lib/furu-store";
 const labels = ["About you", "Your home", "Care plan", "References", "Review"];
+type ApplicationPet = { id: string; name: string; organization: string };
 export default function Application() {
   const { id } = useParams<{ id: string }>();
-  const pet = pets.find((p) => p.id === id) || pets[0];
+  const [pet, setPet] = useState<ApplicationPet | null | undefined>(() =>
+    pets.find((candidate) => candidate.id === id),
+  );
   const account = useAccount();
   const applications = useApplications();
   const active = applications.find(
@@ -33,6 +36,58 @@ export default function Application() {
   const [done, setDone] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (pet !== undefined) return;
+    let activeRequest = true;
+    void fetch(`/api/listings/${encodeURIComponent(id)}`, {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("This pet listing is unavailable.");
+        return response.json();
+      })
+      .then((listing) => {
+        if (activeRequest) setPet(listing);
+      })
+      .catch((requestError) => {
+        if (activeRequest) {
+          setPet(null);
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "This pet listing is unavailable.",
+          );
+        }
+      });
+    return () => {
+      activeRequest = false;
+    };
+  }, [id, pet]);
+  if (pet === undefined)
+    return (
+      <main className="page">
+        <div className="shell">
+          <div className="form-card form-head">
+            <h2>Loading pet listing…</h2>
+          </div>
+        </div>
+      </main>
+    );
+  if (pet === null)
+    return (
+      <main className="page">
+        <div className="shell">
+          <div className="form-card form-head">
+            <ShieldAlert size={52} />
+            <h2>Pet listing unavailable.</h2>
+            <p>{error}</p>
+            <Link href="/browse" className="btn btn-primary">
+              Browse available pets
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   if (!account)
     return (
       <main className="page">
@@ -105,6 +160,7 @@ export default function Application() {
         </div>
       </main>
     );
+  const selectedPet = pet;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (step < 4) {
@@ -115,8 +171,8 @@ export default function Application() {
       await addApplication({
         id: `application-${Date.now()}`,
         userEmail: account!.email,
-        petId: pet.id,
-        petName: pet.name,
+        petId: selectedPet.id,
+        petName: selectedPet.name,
         status: "Under review",
         submittedAt: new Date().toISOString(),
       });

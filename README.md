@@ -27,7 +27,9 @@ npm run build
 ## Connect Supabase
 
 1. Create a Supabase project.
-2. Open **SQL Editor**, paste the contents of `supabase/migrations/202608050001_furu_core.sql`, and run it once.
+2. Open **SQL Editor** and run the migrations in filename order:
+   - `supabase/migrations/202608050001_furu_core.sql`
+   - `supabase/migrations/202608060001_auth_roles_security.sql`
 3. In Supabase, open **Connect** and copy the project URL and publishable key.
 4. In Command Prompt, create your local environment file:
 
@@ -50,6 +52,28 @@ npm run dev
 ```
 
 The migration creates profiles, listings, adoption applications, reviews, favorites, conversations, messages, monitoring check-ins, reports, and the avatar bucket. Row Level Security restricts private records to the appropriate signed-in users. Never put a Supabase service-role key in a `NEXT_PUBLIC_` variable or browser code.
+
+### Auth configuration
+
+In **Authentication → URL Configuration**, set the production Site URL and add these redirect URLs (plus the equivalent preview URLs):
+
+```text
+http://localhost:3000/auth/callback
+http://localhost:3000/update-password
+```
+
+For six-digit email login, edit **Authentication → Email Templates → Magic Link** and include `{{ .Token }}` in the message. If the template retains `{{ .ConfirmationURL }}`, users receive a magic link instead; FurU's callback supports that flow too. Configure custom SMTP before production—the built-in sender is intended only for limited testing.
+
+Personal accounts may be guardians, adopters, or both. Welfare-organization accounts remain restricted until an administrator verifies them directly in a trusted environment:
+
+```sql
+update public.profiles
+set welfare_org_verified = true
+where id = 'organization-user-uuid'
+  and 'welfare_org' = any(roles);
+```
+
+Do not expose that operation through a browser client or a public API.
 
 Existing demo accounts stored in a browser cannot be safely migrated because their passwords were only local demo data. Register those accounts again after Supabase is enabled.
 
@@ -76,7 +100,7 @@ npm run build
 - `/dashboard` — role switcher for adopter, guardian, and organization views
 - `/messages`, `/appointments`, `/verification`, `/resources`, `/volunteer`, `/donations`, `/lost-and-found`, `/foster`, `/help`, `/admin`, `/privacy`, `/terms` — supporting product surfaces
 
-Without Supabase environment variables, the app retains a local demo fallback. With them configured, registration uses Supabase Auth and app records are stored in Postgres/Storage.
+Supabase is required for authentication. The old browser-only account fallback is disabled by default so protected pages cannot be bypassed with local storage. It can be enabled only for isolated UI prototyping in development with `NEXT_PUBLIC_ENABLE_LOCAL_AUTH=true`; it does not bypass server-protected routes.
 
 ## Architecture
 
