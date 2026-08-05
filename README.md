@@ -2,14 +2,56 @@
 
 FurU is a polished, responsive pet adoption and responsible rehoming experience built with Next.js, TypeScript, React Three Fiber, Framer Motion, React Hook Form-ready patterns, and Zod-ready service boundaries.
 
-## Run locally
+## Run locally (Command Prompt)
 
-```bash
+```bat
+cd C:\Users\Jay\Desktop\VSCode\web\FurU
 npm install
 npm run dev
 ```
 
 Open `http://localhost:3000`. Production verification:
+
+```bat
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Connect Supabase
+
+1. Create a Supabase project.
+2. Open **SQL Editor**, paste the contents of `supabase/migrations/202608050001_furu_core.sql`, and run it once.
+3. In Supabase, open **Connect** and copy the project URL and publishable key.
+4. In Command Prompt, create your local environment file:
+
+```bat
+copy .env.example .env.local
+notepad .env.local
+```
+
+Fill in:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Then restart the development server:
+
+```bat
+npm run dev
+```
+
+The migration creates profiles, listings, adoption applications, reviews, favorites, conversations, messages, monitoring check-ins, reports, and the avatar bucket. Row Level Security restricts private records to the appropriate signed-in users. Never put a Supabase service-role key in a `NEXT_PUBLIC_` variable or browser code.
+
+Existing demo accounts stored in a browser cannot be safely migrated because their passwords were only local demo data. Register those accounts again after Supabase is enabled.
+
+### Vercel
+
+In the Vercel project, open **Settings → Environment Variables** and add both variables above for Production and Preview. Redeploy the latest commit. Also set the Supabase **Authentication → URL Configuration** Site URL to the production Vercel address and add the preview/localhost callback URLs you use.
+
+Production verification:
 
 ```bash
 npm run typecheck
@@ -28,7 +70,7 @@ npm run build
 - `/dashboard` — role switcher for adopter, guardian, and organization views
 - `/messages`, `/appointments`, `/verification`, `/resources`, `/volunteer`, `/donations`, `/lost-and-found`, `/foster`, `/help`, `/admin`, `/privacy`, `/terms` — supporting product surfaces
 
-Demo sign-in accepts any valid-looking email and password of at least eight characters. Data stays local and no sensitive document is uploaded to a public service.
+Without Supabase environment variables, the app retains a local demo fallback. With them configured, registration uses Supabase Auth and app records are stored in Postgres/Storage.
 
 ## Architecture
 
@@ -38,18 +80,6 @@ Demo sign-in accepts any valid-looking email and password of at least eight char
 - `public/images` contains original AI-generated visual assets created specifically for FurU.
 
 The 3D hero uses procedural geometry, constrained device pixel ratio, dynamic loading, and a static generated-image fallback. Reduced-motion preferences disable the canvas and nonessential movement. Pet locations are deliberately approximate.
-
-## Supabase connection plan
-
-This build runs in demo mode and needs no environment variables. For production, create server-only service modules for Supabase auth, Postgres, Realtime, and private Storage. Use these environment variables:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-```
-
-Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Store identity, financial, medical, and application files in private buckets; issue short-lived signed URLs only after server-side role and case-membership checks. Add Row Level Security for every table, schema validation at the server boundary, audit events for moderation, and rate limits for auth, messaging, applications, and reports.
 
 ## Generated imagery
 

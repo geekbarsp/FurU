@@ -13,6 +13,8 @@
     "@hookform/resolvers": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.0",
     "framer-motion": "latest",
     "lucide-react": "latest",
     "next": "latest",

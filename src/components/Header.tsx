@@ -25,8 +25,8 @@ export default function Header() {
   const [accountOpen, setAccountOpen] = useState(false);
   const account = useAccount();
   const { notify } = useFeedback();
-  function leave() {
-    signOut();
+  async function leave() {
+    await signOut();
     setAccountOpen(false);
     setOpen(false);
     notify("You’re signed out.", "info");

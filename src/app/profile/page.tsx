@@ -17,7 +17,8 @@ import { useState } from "react";
 import PersonStars from "@/components/PersonStars";
 import { useFeedback } from "@/components/FeedbackProvider";
 import {
-  getListings,
+  useListings,
+  updateAvatar,
   updateAccount,
   useAccount,
   type Account,
@@ -25,6 +26,7 @@ import {
 import { personReviews, personTrustScore } from "@/lib/person-reviews";
 export default function ProfilePage() {
   const account = useAccount();
+  const allListings = useListings();
   const [editing, setEditing] = useState(false);
   if (!account)
     return (
@@ -44,7 +46,7 @@ export default function ProfilePage() {
         </div>
       </main>
     );
-  const listings = getListings(account.email);
+  const listings = allListings.filter((x) => x.ownerEmail === account.email);
   return (
     <main className="page profile-page">
       <div className="shell">
@@ -213,9 +215,7 @@ function ProfilePhoto({ account }: { account: Account }) {
             const file = e.target.files?.[0];
             if (file)
               try {
-                updateAccount(account.email, {
-                  avatar: await resizeAvatar(file),
-                });
+                await updateAvatar(await resizeAvatar(file));
                 notify("Your profile picture was updated.");
               } catch {
                 notify("That picture could not be processed.", "info");
@@ -242,21 +242,29 @@ function EditProfile({
   return (
     <form
       className="profile-editor"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        updateAccount(account.email, { name, phone, location, bio });
+        await updateAccount(account.email, {
+          name: name.trim(),
+          phone,
+          location,
+          bio,
+        });
         notify("Your profile was updated.");
         onDone();
       }}
     >
       <div className="field">
-        <label>Full name</label>
+        <label>Username</label>
         <input
           className="input"
           value={name}
+          minLength={4}
+          maxLength={15}
           onChange={(e) => setName(e.target.value)}
           required
         />
+        <small>4–15 characters</small>
       </div>
       <div className="field">
         <label>Phone</label>

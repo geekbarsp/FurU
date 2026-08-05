@@ -24,6 +24,7 @@ export default function NewListing() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const [values, setValues] = useState<Record<string, string>>({
     type: "Dog",
     sex: "Female",
@@ -39,7 +40,7 @@ export default function NewListing() {
   });
   const update = (name: string, value: string) =>
     setValues((v) => ({ ...v, [name]: value }));
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (step < 4) {
       setStep(step + 1);
@@ -47,19 +48,26 @@ export default function NewListing() {
       return;
     }
     if (!account) return;
-    addListing({
-      id: `listing-${Date.now()}`,
-      ownerEmail: account.email,
-      name: values.name,
-      type: values.type,
-      breed: values.breed,
-      age: values.age,
-      location: values.location,
-      reason: values.reason,
-      status: "Published",
-      createdAt: new Date().toISOString(),
-    });
-    setDone(true);
+    try {
+      await addListing({
+        id: `listing-${Date.now()}`,
+        ownerEmail: account.email,
+        name: values.name,
+        type: values.type,
+        breed: values.breed,
+        age: values.age,
+        location: values.location,
+        reason: values.reason,
+        status: "Published",
+        createdAt: new Date().toISOString(),
+        details: values,
+      });
+      setDone(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to publish this pet.",
+      );
+    }
   }
   if (!account)
     return (
@@ -122,7 +130,9 @@ export default function NewListing() {
           <div className="rehome-assurance">
             <ShieldCheck />
             <b>No selling or breeding</b>
-            <span>Your pet profile is published as soon as you complete it.</span>
+            <span>
+              Your pet profile is published as soon as you complete it.
+            </span>
           </div>
         </div>
         <div className="workflow">
@@ -148,7 +158,10 @@ export default function NewListing() {
             <div className="care-note">
               <ClipboardCheck />
               <b>What happens next?</b>
-              <p>Your listing publishes immediately. You stay in control of who can meet and adopt your pet.</p>
+              <p>
+                Your listing publishes immediately. You stay in control of who
+                can meet and adopt your pet.
+              </p>
             </div>
           </aside>
           <form className="form-card listing-form" onSubmit={submit}>
@@ -367,6 +380,11 @@ export default function NewListing() {
                   this pet, the information is honest, and this is not a sale.
                 </label>
               </div>
+            )}
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
             )}
             {saved && (
               <p role="status" className="saved-note">

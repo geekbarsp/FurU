@@ -1,22 +1,17 @@
 "use client";
 import Link from "next/link";
 import { Star, ShieldCheck } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useFeedback } from "./FeedbackProvider";
-import { useAccount } from "@/lib/furu-store";
-
-type Review = {
-  name: string;
-  rating: number;
-  date: string;
-  details: string;
-  accuracy: number;
-  communication: number;
-  care: number;
-  handover: number;
-};
+import {
+  addProfileReview,
+  getProfileReviews,
+  useAccount,
+  type ProfileReview as Review,
+} from "@/lib/furu-store";
 const seeded: Review[] = [
   {
+    id: "seed-mara",
     name: "Mara D.",
     rating: 5,
     date: "June 2026",
@@ -28,6 +23,7 @@ const seeded: Review[] = [
     handover: 5,
   },
   {
+    id: "seed-paolo",
     name: "Paolo R.",
     rating: 4,
     date: "April 2026",
@@ -39,6 +35,7 @@ const seeded: Review[] = [
     handover: 4,
   },
   {
+    id: "seed-lea",
     name: "Lea S.",
     rating: 5,
     date: "February 2026",
@@ -50,14 +47,6 @@ const seeded: Review[] = [
     handover: 5,
   },
 ];
-const subscribeReviews = (callback: () => void) => {
-  window.addEventListener("storage", callback);
-  window.addEventListener("furu-reviews", callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("furu-reviews", callback);
-  };
-};
 export default function ProfileReviews({
   profileId,
   guardian,
@@ -67,14 +56,16 @@ export default function ProfileReviews({
 }) {
   const account = useAccount();
   const { notify } = useFeedback();
-  const storageKey = `furu-reviews-${profileId}`;
-  const savedRaw = useSyncExternalStore(
-    subscribeReviews,
-    () => localStorage.getItem(storageKey) || "",
-    () => "",
-  );
-  let ownReviews: Review[] = [];
-  try { ownReviews = savedRaw ? JSON.parse(savedRaw) : []; } catch { ownReviews = []; }
+  const [ownReviews, setOwnReviews] = useState<Review[]>([]);
+  useEffect(() => {
+    let active = true;
+    void getProfileReviews(profileId).then((reviews) => {
+      if (active) setOwnReviews(reviews);
+    });
+    return () => {
+      active = false;
+    };
+  }, [profileId]);
   const reviews = [...ownReviews, ...seeded];
   const [rating, setRating] = useState(5);
   const [details, setDetails] = useState("");
@@ -82,23 +73,22 @@ export default function ProfileReviews({
     reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
   const category = (key: "accuracy" | "communication" | "care" | "handover") =>
     (reviews.reduce((sum, r) => sum + r[key], 0) / reviews.length).toFixed(1);
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!account) return;
-    const review: Review = {
-      name: account.name,
-      rating,
-      date: "Just now",
-      details,
-      accuracy: rating,
-      communication: rating,
-      care: rating,
-      handover: rating,
-    };
-    localStorage.setItem(storageKey, JSON.stringify([review, ...ownReviews]));
-    window.dispatchEvent(new Event("furu-reviews"));
-    setDetails("");
-    notify("Your review was added to this profile.");
+    try {
+      await addProfileReview(profileId, rating, details);
+      setOwnReviews(await getProfileReviews(profileId));
+      setDetails("");
+      notify("Your review was added to this profile.");
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : "The review could not be saved.",
+        "info",
+      );
+    }
   }
   return (
     <section className="profile-reviews">
@@ -134,8 +124,8 @@ export default function ProfileReviews({
         ))}
       </div>
       <div className="review-list">
-        {reviews.map((review, i) => (
-          <article className="review-card" key={`${review.name}-${i}`}>
+        {reviews.map((review) => (
+          <article className="review-card" key={review.id}>
             <div className="review-meta">
               <span className="review-avatar">{review.name.charAt(0)}</span>
               <div>

@@ -12,7 +12,12 @@ import {
   ShieldCheck,
   UserCheck,
 } from "lucide-react";
-import { getAdoptionLock, getListings, useAccount } from "@/lib/furu-store";
+import {
+  getAdoptionLock,
+  useAccount,
+  useListings,
+  type UserListing,
+} from "@/lib/furu-store";
 import { useFeedback } from "@/components/FeedbackProvider";
 const tabs = [
   ["Overview", Home],
@@ -24,6 +29,7 @@ const tabs = [
 ] as const;
 export default function Dashboard() {
   const account = useAccount();
+  const allListings = useListings();
   const [tab, setTab] = useState("Overview");
   const { notify } = useFeedback();
   if (!account)
@@ -40,7 +46,7 @@ export default function Dashboard() {
         </div>
       </main>
     );
-  const listings = getListings(account.email);
+  const listings = allListings.filter((x) => x.ownerEmail === account.email);
   const lock = getAdoptionLock(account.email);
   const first = account.name.split(" ")[0];
   return (
@@ -82,7 +88,12 @@ export default function Dashboard() {
                     value={String(listings.length)}
                     label="Pet listings"
                   />
-                  <Metric value={String(listings.filter((x) => x.status === "Published").length)} label="Published" />
+                  <Metric
+                    value={String(
+                      listings.filter((x) => x.status === "Published").length,
+                    )}
+                    label="Published"
+                  />
                   <Metric value="0" label="New applicants" />
                   <Metric value="0" label="In monitoring" />
                 </section>
@@ -251,7 +262,10 @@ export default function Dashboard() {
                   <div className="application-row" key={x.id}>
                     <div>
                       <b>{x.name} was submitted</b>
-                      <p className="row-detail">The pet profile is live and ready for adopters to discover.</p>
+                      <p className="row-detail">
+                        The pet profile is live and ready for adopters to
+                        discover.
+                      </p>
                     </div>
                     <Status text={x.status} />
                   </div>
@@ -287,11 +301,7 @@ function Status({ text }: { text: string }) {
     </span>
   );
 }
-function ListingRows({
-  listings,
-}: {
-  listings: ReturnType<typeof getListings>;
-}) {
+function ListingRows({ listings }: { listings: UserListing[] }) {
   return (
     <>
       {listings.map((x) => (
