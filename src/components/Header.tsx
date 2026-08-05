@@ -47,9 +47,9 @@ export default function Header() {
         </Link>
         <div className="nav-links">
           {links.map(([href, label]) => (
-            <Link key={href} href={href}>
+            <a key={href} href={href}>
               {label}
-            </Link>
+            </a>
           ))}
         </div>
         <div className="nav-actions">
@@ -67,14 +67,28 @@ export default function Header() {
                 aria-label="Open account menu"
                 aria-expanded={accountOpen}
               >
-                <UserRound size={18} />
+                {account.avatar ? (
+                  <span
+                    className="account-button-avatar"
+                    style={{ backgroundImage: `url(${account.avatar})` }}
+                  />
+                ) : (
+                  <UserRound size={18} />
+                )}
                 <span>{first}</span>
               </button>
               {accountOpen && (
                 <div className="account-menu">
                   <div className="account-summary">
-                    <span className="account-avatar">
-                      {account.name.charAt(0).toUpperCase()}
+                    <span
+                      className="account-avatar"
+                      style={
+                        account.avatar
+                          ? { backgroundImage: `url(${account.avatar})` }
+                          : undefined
+                      }
+                    >
+                      {!account.avatar && account.name.charAt(0).toUpperCase()}
                     </span>
                     <div>
                       <b>{account.name}</b>
@@ -83,6 +97,9 @@ export default function Header() {
                   </div>
                   <Link href="/dashboard" onClick={() => setAccountOpen(false)}>
                     <LayoutDashboard size={16} /> My dashboard
+                  </Link>
+                  <Link href="/profile" onClick={() => setAccountOpen(false)}>
+                    <UserRound size={16} /> My profile
                   </Link>
                   <Link
                     href="/listings/new"
@@ -118,14 +135,17 @@ export default function Header() {
         {open && (
           <div className="menu-panel">
             {links.map(([href, label]) => (
-              <Link onClick={() => setOpen(false)} key={href} href={href}>
+              <a onClick={() => setOpen(false)} key={href} href={href}>
                 {label}
-              </Link>
+              </a>
             ))}
             {account ? (
               <>
                 <Link onClick={() => setOpen(false)} href="/dashboard">
                   My dashboard
+                </Link>
+                <Link onClick={() => setOpen(false)} href="/profile">
+                  My profile
                 </Link>
                 <button className="mobile-signout" onClick={leave}>
                   Sign out

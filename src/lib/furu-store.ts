@@ -10,6 +10,8 @@ export type Account = {
   location: string;
   purpose: "Rehome a pet" | "Adopt a pet" | "Both";
   createdAt: string;
+  avatar?: string;
+  bio?: string;
 };
 export type UserListing = {
   id: string;
@@ -40,7 +42,7 @@ const KEYS = {
   listings: "furu-listings",
   applications: "furu-applications",
 };
-const empty = "";
+const empty = JSON.stringify({ session: "", accounts: "[]" });
 const subscribe = (callback: () => void) => {
   window.addEventListener("storage", callback);
   window.addEventListener("furu-store", callback);
@@ -49,7 +51,11 @@ const subscribe = (callback: () => void) => {
     window.removeEventListener("furu-store", callback);
   };
 };
-const sessionSnapshot = () => localStorage.getItem(KEYS.session) || empty;
+const accountSnapshot = () =>
+  JSON.stringify({
+    session: localStorage.getItem(KEYS.session) || "",
+    accounts: localStorage.getItem(KEYS.accounts) || "[]",
+  });
 const serverSnapshot = () => empty;
 const read = <T>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
@@ -62,14 +68,24 @@ const read = <T>(key: string, fallback: T): T => {
 const changed = () => window.dispatchEvent(new Event("furu-store"));
 
 export function useAccount() {
-  const email = useSyncExternalStore(
+  const snapshot = useSyncExternalStore(
     subscribe,
-    sessionSnapshot,
+    accountSnapshot,
     serverSnapshot,
   );
-  return (
-    read<Account[]>(KEYS.accounts, []).find((a) => a.email === email) || null
-  );
+  try {
+    const parsed = JSON.parse(snapshot) as {
+      session: string;
+      accounts: string;
+    };
+    return (
+      (JSON.parse(parsed.accounts) as Account[]).find(
+        (a) => a.email === parsed.session,
+      ) || null
+    );
+  } catch {
+    return null;
+  }
 }
 export function getAccount(email: string) {
   return (
@@ -97,6 +113,23 @@ export function signIn(email: string, password: string) {
 }
 export function signOut() {
   localStorage.removeItem(KEYS.session);
+  changed();
+}
+export function updateAccount(
+  email: string,
+  changes: Partial<
+    Pick<Account, "name" | "phone" | "location" | "purpose" | "avatar" | "bio">
+  >,
+) {
+  const accounts = read<Account[]>(KEYS.accounts, []);
+  localStorage.setItem(
+    KEYS.accounts,
+    JSON.stringify(
+      accounts.map((account) =>
+        account.email === email ? { ...account, ...changes } : account,
+      ),
+    ),
+  );
   changed();
 }
 export function getListings(email?: string) {
