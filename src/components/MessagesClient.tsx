@@ -24,18 +24,36 @@ export default function MessagesClient() {
   const [loading, setLoading] = useState(true);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const { notify } = useFeedback();
-  const load = useCallback(async () => {
+  const load = useCallback(async (preferredId?: string) => {
     const response = await fetch("/api/conversations", { headers: { Accept: "application/json" } });
     const data = response.ok ? await response.json() : [];
     setConversations(data);
-    setActiveId((current) => current || data[0]?.id || "");
+    setActiveId((current) => {
+      if (preferredId && data.some((item: Conversation) => item.id === preferredId)) return preferredId;
+      if (current && data.some((item: Conversation) => item.id === current)) return current;
+      return data[0]?.id || "";
+    });
     setLoading(false);
   }, []);
   useEffect(() => {
     const pet = searchParams.get("pet");
+    const requestedConversation = searchParams.get("conversation") || undefined;
     const canStart = pet && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(pet);
-    void (canStart ? fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listingId: pet }) }) : Promise.resolve()).finally(load);
-  }, [load, searchParams]);
+    if (!canStart) {
+      void Promise.resolve(requestedConversation).then(load);
+      return;
+    }
+    void fetch("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId: pet }),
+    })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null);
+        if (!response.ok) notify(result?.error || "The conversation could not be started.", "info");
+        await load(result?.id || requestedConversation);
+      });
+  }, [load, notify, searchParams]);
   const active = conversations.find((conversation) => conversation.id === activeId);
   const listing = useMemo(() => {
     if (!active?.pet_listings) return {};

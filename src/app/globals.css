@@ -4139,7 +4139,7 @@ body:before {
 .pet-gallery-small:nth-of-type(2) img { object-position: 35% 45%; transform: scale(1.08); }
 .pet-gallery-small:nth-of-type(3) img { object-position: 65% 55%; transform: scale(1.13); }
 .pet-gallery-main { grid-column: 1 / -1; }
-.pet-gallery .photo-note { position: absolute; left: 18px; top: 18px; background: rgba(255,253,248,.9); backdrop-filter: blur(8px); padding: 9px 13px; border-radius: 99px; font-size: .75rem; font-weight: 700; }
+.pet-gallery .photo-note { position: absolute; left: 18px; top: 18px; bottom: auto; background: rgba(255,253,248,.9); backdrop-filter: blur(8px); padding: 9px 13px; border-radius: 99px; font-size: .75rem; font-weight: 700; }
 .pet-profile-summary { padding-top: 20px; }
 .pet-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 55px; margin: 95px 0; align-items: start; }
 .pet-detail-main { display: grid; gap: 20px; }

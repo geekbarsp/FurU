@@ -24,7 +24,16 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: listing } = await supabase.from("pet_listings").select("id,owner_id").eq("id", parsed.data.listingId).eq("status", "Published").neq("owner_id", auth.userId).maybeSingle();
   if (!listing) return NextResponse.json({ error: "This listing is unavailable." }, { status: 404, headers });
-  const { data, error } = await supabase.from("conversations").upsert({ listing_id: listing.id, guardian_id: listing.owner_id, adopter_id: auth.userId }, { onConflict: "listing_id,guardian_id,adopter_id" }).select("id").single();
+  const { data: existing, error: lookupError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("listing_id", listing.id)
+    .eq("guardian_id", listing.owner_id)
+    .eq("adopter_id", auth.userId)
+    .maybeSingle();
+  if (lookupError) return NextResponse.json({ error: "Conversation could not be started." }, { status: 400, headers });
+  if (existing) return NextResponse.json(existing, { status: 200, headers });
+  const { data, error } = await supabase.from("conversations").insert({ listing_id: listing.id, guardian_id: listing.owner_id, adopter_id: auth.userId }).select("id").single();
   if (error) return NextResponse.json({ error: "Conversation could not be started." }, { status: 400, headers });
   return NextResponse.json(data, { status: 201, headers });
 }

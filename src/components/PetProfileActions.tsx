@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, useFeedback } from "./FeedbackProvider";
@@ -16,6 +17,8 @@ export default function PetProfileActions({
 }) {
   const [saved, setSaved] = useState(false);
   const [report, setReport] = useState(false);
+  const [startingConversation, setStartingConversation] = useState(false);
+  const router = useRouter();
   const { notify } = useFeedback();
   useEffect(() => {
     let active = true;
@@ -66,6 +69,32 @@ export default function PetProfileActions({
       );
     }
   }
+  async function askQuestion() {
+    if (startingConversation) return;
+    setStartingConversation(true);
+    try {
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: id }),
+      });
+      const result = await response.json().catch(() => null);
+      if (response.status === 401) {
+        const destination = `/messages?pet=${id}`;
+        router.push(`/sign-in?next=${encodeURIComponent(destination)}`);
+        return;
+      }
+      if (!response.ok || !result?.id) {
+        notify(result?.error || "The conversation could not be started.", "info");
+        return;
+      }
+      router.push(`/messages?conversation=${encodeURIComponent(result.id)}`);
+    } catch {
+      notify("The conversation could not be started.", "info");
+    } finally {
+      setStartingConversation(false);
+    }
+  }
   return (
     <>
       {!available ? (
@@ -84,9 +113,14 @@ export default function PetProfileActions({
           <Heart size={18} fill={saved ? "currentColor" : "none"} />{" "}
           {saved ? "Saved" : "Save"}
         </button>
-        <Link className="btn btn-ghost" href={`/messages?pet=${id}`}>
-          <MessageCircle size={18} /> Ask a question
-        </Link>
+        <button
+          className="btn btn-ghost"
+          type="button"
+          onClick={askQuestion}
+          disabled={startingConversation}
+        >
+          <MessageCircle size={18} /> {startingConversation ? "Opening conversation…" : "Ask a question"}
+        </button>
       </div>
       <button
         type="button"
