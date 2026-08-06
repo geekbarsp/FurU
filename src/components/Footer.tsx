@@ -38,7 +38,7 @@ export default function Footer() {
           <div className="footer-col">
             <b>FurU</b>
             <Link href="/help">Help center</Link>
-            <Link href="/contact">Contact</Link>
+            <Link href="/help#contact">Contact</Link>
             <Link href="/about">About FurU</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
