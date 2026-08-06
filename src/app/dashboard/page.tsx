@@ -351,9 +351,9 @@ function ListingRows({ listings }: { listings: UserListing[] }) {
             </p>
           </div>
           <Status text={x.status} />
-          <button className="btn btn-ghost btn-small" type="button">
-            Manage
-          </button>
+          <Link className="btn btn-ghost btn-small" href={`/pets/${x.id}`}>
+            View profile
+          </Link>
         </div>
       ))}
     </>

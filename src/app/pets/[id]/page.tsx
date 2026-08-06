@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { BadgeCheck, CheckCircle2, MapPin, ShieldCheck, Star, Syringe } from "lucide-react";
 import { listingRowToPet, pets, type Pet } from "@/lib/data";
 import { getRichPetProfile } from "@/lib/pet-profile-data";
@@ -14,13 +15,25 @@ export function generateStaticParams() {
   return pets.map((pet) => ({ id: pet.id }));
 }
 
-async function loadPet(id: string): Promise<Pet | undefined> {
+// Live listing visibility depends on the request's authenticated guardian.
+// Never cache a paused owner-only profile as a public page.
+export const dynamic = "force-dynamic";
+
+const loadPet = cache(async (id: string): Promise<Pet | undefined> => {
   const seeded = pets.find((candidate) => candidate.id === id);
   if (seeded) return seeded;
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.from("pet_listings").select("id,name,animal_type,breed,age,location,reason,details").eq("id", id).eq("status", "Published").maybeSingle();
+  const { data, error } = await supabase
+    .from("pet_listings")
+    .select("id,name,animal_type,breed,age,location,reason,details,status")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("Unable to load pet profile", { id, code: error.code });
+    return undefined;
+  }
   return data ? listingRowToPet(data) : undefined;
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -55,7 +68,7 @@ export default async function PetProfile({ params }: { params: Promise<{ id: str
             <span className="photo-note">Verified listing · {pet.photos.length} photos</span>
           </div>
           <div className="profile-content pet-profile-summary">
-            <span className="eyebrow">Available for adoption</span>
+            <span className="eyebrow">{pet.listingStatus === "Paused" ? "Placement monitoring in progress" : pet.listingStatus === "Rehomed" ? "Successfully rehomed" : "Available for adoption"}</span>
             <h1>{pet.name}</h1>
             <p className="location-line"><MapPin size={17} /> {pet.location} · Approximate location</p>
             <div className="chips">{pet.traits.map((trait) => <span className="chip" key={trait}>{trait}</span>)}</div>
@@ -67,7 +80,7 @@ export default async function PetProfile({ params }: { params: Promise<{ id: str
               <div className="info"><small>Vaccinations</small><b>{pet.vaccinated ? "Up to date" : "In progress"}</b></div>
             </div>
             {pet.specialNeeds && <div className="notice"><Syringe size={22} /><span><b>Ongoing care</b><br />{pet.specialNeeds}</span></div>}
-            <PetProfileActions id={pet.id} name={pet.name} />
+            <PetProfileActions id={pet.id} name={pet.name} available={!pet.listingStatus || pet.listingStatus === "Published"} />
           </div>
         </section>
 

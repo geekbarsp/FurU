@@ -8,9 +8,11 @@ import { addReport, getFavoritePetKeys, setFavorite } from "@/lib/furu-store";
 export default function PetProfileActions({
   id,
   name,
+  available = true,
 }: {
   id: string;
   name: string;
+  available?: boolean;
 }) {
   const [saved, setSaved] = useState(false);
   const [report, setReport] = useState(false);
@@ -66,6 +68,14 @@ export default function PetProfileActions({
   }
   return (
     <>
+      {!available ? (
+        <div className="hero-actions">
+          <Link className="btn btn-primary" href="/dashboard">
+            Manage this placement
+          </Link>
+        </div>
+      ) : (
+        <>
       <div className="hero-actions">
         <Link className="btn btn-primary" href={`/application/${id}`}>
           Apply to adopt
@@ -119,6 +129,8 @@ export default function PetProfileActions({
           </button>
         </form>
       </Dialog>
+        </>
+      )}
     </>
   );
 }

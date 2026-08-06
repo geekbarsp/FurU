@@ -6,6 +6,7 @@ export type Pet = {
   urgency: "Standard" | "Soon" | "Urgent"; description: string; traits: string[];
   organization: string;
   photos?: string[];
+  listingStatus?: "Published" | "Paused" | "Rehomed";
 };
 
 export const pets: Pet[] = [
@@ -46,6 +47,10 @@ export function listingRowToPet(row: Record<string, unknown>): Pet {
     description: details.personality || details.routine || String(row.reason || "A pet looking for a thoughtful next home."),
     traits: (details.personality || "Gentle").split(/[,·]/).map((item) => item.trim()).filter(Boolean).slice(0, 4),
     organization: details.organization || "Verified FurU guardian", photos,
+    listingStatus:
+      row.status === "Paused" || row.status === "Rehomed"
+        ? row.status
+        : "Published",
   };
 }
 
