@@ -148,13 +148,13 @@ export default function SignUp() {
                   {
                     role: "guardian_adopter",
                     purpose: "Both",
-                    label: "Guardian + adopter",
+                    label: "Guardian + Adopter",
                     copy: "Use both journeys from one personal account.",
                   },
                   {
                     role: "welfare_org",
                     purpose: "Rehome a pet",
-                    label: "Welfare organization",
+                    label: "Welfare Organization",
                     copy: "Manage animals after FurU verifies your organization.",
                   },
                 ] as const

@@ -18,7 +18,7 @@ const links = [
   ["/", "Home"],
   ["/browse", "Adopt"],
   ["/listings/new", "Rehome a pet"],
-  ["/resources", "Pet Care"],
+  ["/pet-care", "Pet Care"],
   ["/download", "Download"],
 ];
 export default function Header() {
@@ -54,6 +54,8 @@ export default function Header() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   const first = account?.name.split(" ")[0];
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
   return (
     <header className="header">
       <nav className="nav shell" aria-label="Main navigation">
@@ -72,6 +74,8 @@ export default function Header() {
             <Link
               key={href}
               href={href}
+              className={isActive(href) ? "active" : undefined}
+              aria-current={isActive(href) ? "page" : undefined}
               onClick={(event) => refreshActivePage(event, href)}
             >
               {label}
@@ -178,6 +182,8 @@ export default function Header() {
                 }}
                 key={href}
                 href={href}
+                className={isActive(href) ? "active" : undefined}
+                aria-current={isActive(href) ? "page" : undefined}
               >
                 {label}
               </Link>
@@ -195,9 +201,14 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <Link onClick={() => setOpen(false)} href="/sign-in">
-                Sign in
-              </Link>
+              <>
+                <Link onClick={() => setOpen(false)} href="/sign-in">
+                  Sign in
+                </Link>
+                <Link onClick={() => setOpen(false)} href="/sign-up">
+                  Create account
+                </Link>
+              </>
             )}
           </div>
         )}

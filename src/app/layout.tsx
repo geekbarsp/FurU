@@ -5,6 +5,9 @@ import Footer from "@/components/Footer";
 import { FeedbackProvider } from "@/components/FeedbackProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://fur-u.vercel.app",
+  ),
   title: {
     default: "FurU — Rehome with care",
     template: "%s · FurU",

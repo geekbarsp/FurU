@@ -33,5 +33,7 @@ export const routeLabels: Record<string,string> = {
   resources:"Pet care resources", volunteer:"Volunteer with us", donations:"Support verified rescues",
   messages:"Messages", appointments:"Appointments", verification:"Verification center",
   "lost-and-found":"Lost & found", foster:"Emergency foster requests", help:"Help center",
-  privacy:"Privacy policy", terms:"Terms & conditions", admin:"Admin dashboard"
+  privacy:"Privacy policy", terms:"Terms & conditions", admin:"Admin dashboard",
+  contact:"Contact support", about:"About FurU", safety:"Community safety",
+  "community-guidelines":"Community guidelines"
 };
