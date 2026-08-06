@@ -4223,6 +4223,8 @@ body:before {
 .handover-review-form { max-width: 720px; margin: 0 auto 110px; }
 .handover-review-form > .category-rating { padding: 15px 0; border-bottom: 1px solid var(--line); }
 .handover-review-form .field { margin-top: 24px; }
+.signup-code-form { width: min(100%, 430px); margin: 22px auto 4px; display: grid; gap: 12px; text-align: left; }
+.signup-code-form .full-btn { width: 100%; }
 
 @media (max-width: 900px) {
   .pet-profile-hero, .pet-detail-layout, .monitoring-layout { grid-template-columns: 1fr; }

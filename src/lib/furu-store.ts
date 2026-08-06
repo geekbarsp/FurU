@@ -270,6 +270,11 @@ export async function createAccount(input: CreateAccountInput) {
       },
     });
     if (error) throw error;
+    if (data.user && data.user.identities?.length === 0) {
+      throw new Error(
+        "An account with this email already exists. Sign in or reset your password instead.",
+      );
+    }
     if (data.session) await reload();
     return { needsEmailConfirmation: !data.session };
   }
@@ -342,6 +347,31 @@ export async function verifyEmailOtp(email: string, token: string) {
   });
   if (error) throw error;
   await reload();
+}
+
+export async function verifySignupOtp(email: string, token: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: token.trim(),
+    type: "signup",
+  });
+  if (error) throw error;
+  await reload();
+}
+
+export async function resendSignupCode(email: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: email.trim().toLowerCase(),
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+    },
+  });
+  if (error) throw error;
 }
 
 export async function requestPasswordReset(email: string) {

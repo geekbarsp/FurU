@@ -2,13 +2,20 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Heart } from "lucide-react";
-import { createAccount } from "@/lib/furu-store";
+import {
+  createAccount,
+  resendSignupCode,
+  verifySignupOtp,
+} from "@/lib/furu-store";
 
 export default function SignUp() {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState(false);
   const [error, setError] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [resent, setResent] = useState(false);
   const [form, setForm] = useState({
     purpose: "Rehome a pet" as "Rehome a pet" | "Adopt a pet" | "Both",
     accountRole: "guardian" as
@@ -59,6 +66,31 @@ export default function SignUp() {
       );
     }
   }
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setVerificationBusy(true);
+    setError("");
+    try {
+      await verifySignupOtp(form.email, verificationCode);
+      setConfirmEmail(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The verification code is invalid or expired.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+  async function resendCode() {
+    setVerificationBusy(true);
+    setError("");
+    try {
+      await resendSignupCode(form.email);
+      setResent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "A new code could not be sent.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
   if (done)
     return (
       <main className="page auth-page">
@@ -75,16 +107,39 @@ export default function SignUp() {
                 ? "Check your email and confirm your address before signing in."
                 : "Your account and rehoming workspace are ready and securely connected."}
             </p>
+            {confirmEmail && (
+              <form className="signup-code-form" onSubmit={verifyCode}>
+                <div className="field">
+                  <label htmlFor="signup-code">6-digit verification code</label>
+                  <input
+                    id="signup-code"
+                    className="input"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))}
+                    required
+                  />
+                  <small>Enter the code sent to {form.email}.</small>
+                </div>
+                {error && <p className="error" role="alert">{error}</p>}
+                {resent && <p className="saved-note" role="status">A new verification email was requested.</p>}
+                <button className="btn btn-primary full-btn" disabled={verificationBusy}>
+                  {verificationBusy ? "Checking…" : "Verify and open my account"}
+                </button>
+                <button type="button" className="btn btn-ghost full-btn" disabled={verificationBusy} onClick={resendCode}>
+                  Send a new code
+                </button>
+              </form>
+            )}
             <div className="hero-actions" style={{ justifyContent: "center" }}>
-              {confirmEmail ? (
-                <Link href="/sign-in" className="btn btn-primary">
-                  Go to sign in
-                </Link>
-              ) : form.accountRole === "welfare_org" ? (
+              {!confirmEmail && form.accountRole === "welfare_org" ? (
                 <Link href="/dashboard" className="btn btn-primary">
                   Open dashboard
                 </Link>
-              ) : (
+              ) : !confirmEmail ? (
                 <>
                   <Link href="/listings/new" className="btn btn-primary">
                     Rehome a pet
@@ -93,7 +148,7 @@ export default function SignUp() {
                     Open dashboard
                   </Link>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
