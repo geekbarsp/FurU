@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthContext, hasCapability } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listingRowToPet } from "@/lib/data";
 
 const listingSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -14,6 +15,13 @@ const listingSchema = z.object({
 });
 
 const privateHeaders = { "Cache-Control": "private, no-store" };
+
+export async function GET() {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.from("pet_listings").select("id,name,animal_type,breed,age,location,reason,details,status,created_at").eq("status", "Published").order("created_at", { ascending: false });
+  if (error) return NextResponse.json({ error: "Listings could not be loaded." }, { status: 400 });
+  return NextResponse.json((data || []).map((row) => listingRowToPet(row)), { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=120" } });
+}
 
 export async function POST(request: Request) {
   const auth = await getAuthContext();

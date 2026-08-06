@@ -64,6 +64,7 @@ export type AdoptionApplication = {
   petName: string;
   status: AdoptionStatus;
   submittedAt: string;
+  answers?: Record<string, string>;
 };
 type StoreState = {
   account: Account | null;
@@ -462,6 +463,27 @@ export async function addListing(listing: UserListing) {
   );
   await reload();
 }
+export async function uploadPetPhotos(files: File[]) {
+  if (!files.length) throw new Error("Add at least one recent pet photo.");
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase || !state.account) {
+    if (!prototypeFallbackEnabled) throw new Error("Sign in before uploading pet photos.");
+    return Promise.all(files.slice(0, 5).map((file) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("Photo could not be read.")); reader.readAsDataURL(file);
+    })));
+  }
+  const urls: string[] = [];
+  for (const file of files.slice(0, 5)) {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/) || file.size > 8 * 1024 * 1024) throw new Error("Each photo must be JPG, PNG, or WebP and no larger than 8 MB.");
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${state.account.id}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from("pet-photos").upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from("pet-photos").getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
+}
 export function getApplications(email?: string) {
   return email
     ? state.applications.filter((x) => x.userEmail === email)
@@ -473,7 +495,10 @@ export async function addApplication(application: AdoptionApplication) {
     const response = await fetch("/api/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ petId: application.petId, answers: {} }),
+      body: JSON.stringify({
+        petId: application.petId,
+        answers: application.answers || {},
+      }),
     });
     if (!response.ok) {
       const result = (await response.json().catch(() => null)) as
@@ -592,9 +617,10 @@ export async function getProfileReviews(
 
 export async function addProfileReview(
   profileId: string,
-  rating: number,
+  scores: Pick<ProfileReview, "accuracy" | "communication" | "care" | "handover">,
   details: string,
 ) {
+  const rating = Number(((scores.accuracy + scores.communication + scores.care + scores.handover) / 4).toFixed(1));
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {
     const review: ProfileReview = {
@@ -603,10 +629,7 @@ export async function addProfileReview(
       rating,
       date: "Just now",
       details,
-      accuracy: rating,
-      communication: rating,
-      care: rating,
-      handover: rating,
+      ...scores,
     };
     localStorage.setItem(
       `furu-reviews-${profileId}`,
@@ -626,10 +649,7 @@ export async function addProfileReview(
     pet_key: profileId,
     rating,
     review: details,
-    accuracy: rating,
-    communication: rating,
-    care: rating,
-    handover: rating,
+    ...scores,
   });
   if (error) throw error;
 }

@@ -5,6 +5,7 @@ export type Pet = {
   vaccinated: boolean; goodWith: string[]; specialNeeds?: string;
   urgency: "Standard" | "Soon" | "Urgent"; description: string; traits: string[];
   organization: string;
+  photos?: string[];
 };
 
 export const pets: Pet[] = [
@@ -21,6 +22,32 @@ export const pets: Pet[] = [
   { id:"suki", name:"Suki", type:"Cat", breed:"Tortoiseshell", age:"3 years", ageGroup:"Adult", sex:"Female", size:"Small", location:"Pasig", image:"/images/miso.png", vaccinated:true, goodWith:["Cats"], urgency:"Standard", description:"Elegant and observant, Suki saves her loudest purrs for people she trusts.", traits:["Observant","Graceful","Loyal"], organization:"Harbor Tails Manila" },
   { id:"bantay", name:"Bantay", type:"Dog", breed:"Aspin", age:"11 years", ageGroup:"Senior", sex:"Male", size:"Medium", location:"Manila", image:"/images/bruno.png", vaccinated:true, goodWith:["Children","Dogs"], specialNeeds:"Low-impact exercise", urgency:"Urgent", description:"A beloved senior ready to spend his golden years close to a kind family.", traits:["Devoted","Calm","Wise"], organization:"Second Spring Rescue" }
 ];
+
+export function listingRowToPet(row: Record<string, unknown>): Pet {
+  const details = (row.details || {}) as Record<string, string>;
+  const goodWith = [details.children === "Yes" && "Children", details.cats === "Yes" && "Cats", details.dogs === "Yes" && "Dogs"].filter(Boolean) as string[];
+  const rawType = String(row.animal_type || details.type || "Dog");
+  const type: Pet["type"] = rawType === "Cat" || rawType === "Rabbit" ? rawType : "Dog";
+  const rawSize = details.size;
+  const size: Pet["size"] = rawSize === "Small" || rawSize === "Large" ? rawSize : "Medium";
+  const rawSex = details.sex;
+  const sex: Pet["sex"] = rawSex === "Male" ? "Male" : "Female";
+  const age = String(row.age || "Age not provided");
+  const ageGroup: Pet["ageGroup"] = /month|puppy|kitten|young/i.test(age) ? "Young" : /([89]|1[0-9])\s*year|senior/i.test(age) ? "Senior" : "Adult";
+  const rawUrgency = details.urgency;
+  const urgency: Pet["urgency"] = rawUrgency === "Urgent" || rawUrgency === "Soon" ? rawUrgency : "Standard";
+  let photos: string[] = [];
+  try { photos = JSON.parse(details.photos || "[]"); } catch { photos = []; }
+  return {
+    id: String(row.id), name: String(row.name), type, breed: String(row.breed), age, ageGroup,
+    sex, size, location: String(row.location), image: details.photo_url || "/images/luna.png",
+    vaccinated: details.vaccination === "Up to date", goodWith,
+    specialNeeds: details.medical || undefined, urgency,
+    description: details.personality || details.routine || String(row.reason || "A pet looking for a thoughtful next home."),
+    traits: (details.personality || "Gentle").split(/[,·]/).map((item) => item.trim()).filter(Boolean).slice(0, 4),
+    organization: details.organization || "Verified FurU guardian", photos,
+  };
+}
 
 export const journeySteps = [
   ["01", "Discover", "Browse profiles built around personality, care, and compatibility."],

@@ -36,6 +36,12 @@ export default function Application() {
   const [done, setDone] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({
+    do_you_own_or_rent: "Own",
+    home_type: "House",
+    children_at_home: "No",
+    current_pets: "No",
+  });
   useEffect(() => {
     if (pet !== undefined) return;
     let activeRequest = true;
@@ -175,6 +181,12 @@ export default function Application() {
         petName: selectedPet.name,
         status: "Under review",
         submittedAt: new Date().toISOString(),
+        answers: {
+          ...answers,
+          full_name: answers.full_name || account!.name,
+          contact_number: answers.contact_number || account!.phone,
+          city_municipality: answers.city_municipality || account!.location,
+        },
       });
       setDone(true);
     } catch (err) {
@@ -188,7 +200,20 @@ export default function Application() {
   return (
     <main className="page">
       <div className="shell">
-        <form className="form-card" onSubmit={submit}>
+        <form
+          className="form-card"
+          onSubmit={submit}
+          onChange={(event) => {
+            const target = event.target as unknown as HTMLInputElement | HTMLSelectElement;
+            if (!target.name) return;
+            setAnswers((current) => ({
+              ...current,
+              [target.name]: target instanceof HTMLInputElement && target.type === "checkbox"
+                ? String(target.checked)
+                : target.value,
+            }));
+          }}
+        >
           <span className="eyebrow">Adoption application · {pet.name}</span>
           <h2>{labels[step]}</h2>
           <p>
@@ -227,7 +252,7 @@ export default function Application() {
               <Select label="Current pets?" options={["No", "Yes"]} />
               <Field label="Describe the available space" wide />
               <label className="wide consent">
-                <input type="checkbox" required /> Everyone in my household
+                <input name="household_support" type="checkbox" required /> Everyone in my household
                 supports this adoption.
               </label>
             </div>
@@ -269,7 +294,7 @@ export default function Application() {
                 </span>
               </div>
               <label className="consent">
-                <input type="checkbox" required /> I confirm these details are
+                <input name="accuracy_consent" type="checkbox" required /> I confirm these details are
                 accurate and accept the one-active-adoption policy.
               </label>
             </div>
@@ -315,6 +340,9 @@ export default function Application() {
     </main>
   );
 }
+function fieldName(label: string) {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
 function Field({
   label,
   type = "text",
@@ -329,7 +357,7 @@ function Field({
   return (
     <div className={`field ${wide ? "wide" : ""}`}>
       <label>{label}</label>
-      <input className="input" type={type} defaultValue={value} required />
+      <input className="input" name={fieldName(label)} type={type} defaultValue={value} required />
     </div>
   );
 }
@@ -337,7 +365,7 @@ function Select({ label, options }: { label: string; options: string[] }) {
   return (
     <div className="field">
       <label>{label}</label>
-      <select className="input">
+      <select className="input" name={fieldName(label)} required>
         {options.map((x) => (
           <option key={x}>{x}</option>
         ))}

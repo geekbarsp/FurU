@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
 import {
   getAdoptionLock,
   useAccount,
+  useApplications,
   useListings,
   type UserListing,
 } from "@/lib/furu-store";
@@ -27,11 +28,33 @@ const tabs = [
   ["Messages", MessageCircle],
   ["Notifications", Bell],
 ] as const;
+type WorkspaceApplication = {
+  id: string;
+  pet_name: string;
+  status: string;
+  answers: Record<string, string>;
+  submitted_at: string;
+  is_owner: boolean;
+};
+type WorkspaceNotification = { id: string; template_key: string; scheduled_for: string; payload: { pet_name?: string; day?: number } };
 export default function Dashboard() {
   const account = useAccount();
   const allListings = useListings();
   const [tab, setTab] = useState("Overview");
+  const adopterApplications = useApplications();
+  const [workspaceApplications, setWorkspaceApplications] = useState<WorkspaceApplication[]>([]);
+  const [workspaceNotifications, setWorkspaceNotifications] = useState<WorkspaceNotification[]>([]);
   const { notify } = useFeedback();
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/applications", { headers: { Accept: "application/json" } })
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => { if (active) setWorkspaceApplications(data); });
+    void fetch("/api/notifications", { headers: { Accept: "application/json" } })
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => { if (active) setWorkspaceNotifications(data); });
+    return () => { active = false; };
+  }, []);
   if (!account)
     return (
       <main className="page">
@@ -94,8 +117,8 @@ export default function Dashboard() {
                     )}
                     label="Published"
                   />
-                  <Metric value="0" label="New applicants" />
-                  <Metric value="0" label="In monitoring" />
+                  <Metric value={String(workspaceApplications.filter((item) => item.is_owner && item.status === "Under review").length)} label="New applicants" />
+                  <Metric value={String(workspaceApplications.filter((item) => item.is_owner && item.status === "Monitoring").length)} label="In monitoring" />
                 </section>
                 {lock ? (
                   <div className="eligibility-card locked">
@@ -201,10 +224,15 @@ export default function Dashboard() {
               <div className="panel">
                 <span className="eyebrow">Decide with context</span>
                 <h3>Applicant review</h3>
-                <Empty
-                  title="No applications to review"
-                  copy="When your listing is published, you’ll see verified profiles, household details, care plans, and references here. Contact details stay private until you choose to connect."
-                />
+                {workspaceApplications.some((application) => application.is_owner) ? (
+                  <ApplicationRows
+                    applications={workspaceApplications.filter((application) => application.is_owner)}
+                    onUpdated={(id, status) => setWorkspaceApplications((items) => items.map((item) => item.id === id ? { ...item, status } : item))}
+                    notify={notify}
+                  />
+                ) : (
+                  <Empty title="No applications to review" copy="When your listing is published, you’ll see household details, care plans, and references here. Contact details stay private until you choose to connect." />
+                )}
               </div>
             )}
             {tab === "Monitoring" && (
@@ -236,15 +264,23 @@ export default function Dashboard() {
                     <span>Placement review</span>
                   </div>
                 </div>
+                {adopterApplications.filter((application) => application.status === "Monitoring").map((application) => (
+                  <Link key={application.id} className="monitoring-case-link" href={`/monitoring/${application.id}`}>
+                    <b>{application.petName}</b><span>Submit a check-in or photo update</span>
+                  </Link>
+                ))}
+                {adopterApplications.filter((application) => application.status === "Completed").map((application) => (
+                  <Link key={application.id} className="monitoring-case-link" href={`/reviews/new?application=${application.id}`}>
+                    <b>{application.petName}</b><span>Placement completed · Leave a verified review</span>
+                  </Link>
+                ))}
               </>
             )}
             {tab === "Messages" && (
               <div className="panel">
                 <h3>Messages</h3>
-                <Empty
-                  title="No conversations yet"
-                  copy="Conversations with approved applicants will appear here. FurU keeps early contact inside the platform for safety."
-                />
+                <p>Keep early conversations and scheduling inside FurU. Contact details remain masked until both participants consent.</p>
+                <Link className="btn btn-primary" href="/messages">Open private messages</Link>
               </div>
             )}
             {tab === "Notifications" && (
@@ -270,7 +306,8 @@ export default function Dashboard() {
                     <Status text={x.status} />
                   </div>
                 ))}
-                {!listings.length && (
+                {workspaceNotifications.map((item) => <div className="application-row" key={item.id}><div><b>Day {item.payload.day} check-in for {item.payload.pet_name || "your pet"}</b><p className="row-detail">Share a photo and adjustment update to keep this placement supported.</p></div><Link className="btn btn-ghost btn-small" href="/dashboard" onClick={() => setTab("Monitoring")}>Open</Link></div>)}
+                {!listings.length && !workspaceNotifications.length && (
                   <Empty
                     title="You’re all caught up"
                     copy="Listing, applicant, handover, and monitoring updates will appear here."
@@ -321,6 +358,36 @@ function ListingRows({ listings }: { listings: UserListing[] }) {
       ))}
     </>
   );
+}
+function ApplicationRows({
+  applications,
+  onUpdated,
+  notify,
+}: {
+  applications: WorkspaceApplication[];
+  onUpdated: (id: string, status: string) => void;
+  notify: (message: string) => void;
+}) {
+  async function update(applicationId: string, status: "Monitoring" | "Declined" | "Completed") {
+    const response = await fetch("/api/applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId, status }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) return notify(result?.error || "Application could not be updated.");
+    onUpdated(applicationId, status);
+    notify(status === "Monitoring" ? "Application accepted. Monitoring has started." : status === "Completed" ? "Handover completed. Verified reviews are now available." : "Application declined.");
+  }
+  return <div className="application-queue">{applications.map((application) => (
+    <article key={application.id} className="application-review-card">
+      <div className="application-review-head"><div><b>{application.pet_name}</b><small>Submitted {new Date(application.submitted_at).toLocaleDateString("en-PH")}</small></div><Status text={application.status} /></div>
+      <dl>{Object.entries(application.answers || {}).filter(([key]) => !key.includes("contact") && !key.includes("phone")).slice(0, 8).map(([key, value]) => <div key={key}><dt>{key.replaceAll("_", " ")}</dt><dd>{value}</dd></div>)}</dl>
+      {application.status === "Under review" && <div className="application-review-actions"><button className="btn btn-primary btn-small" onClick={() => update(application.id, "Monitoring")}>Accept application</button><button className="btn btn-ghost btn-small" onClick={() => update(application.id, "Declined")}>Decline</button></div>}
+      {application.status === "Monitoring" && <div className="application-review-actions"><button className="btn btn-primary btn-small" onClick={() => update(application.id, "Completed")}>Complete handover</button><Link className="btn btn-ghost btn-small" href={`/monitoring/${application.id}`}>View check-ins</Link></div>}
+      {application.status === "Completed" && <Link className="btn btn-ghost btn-small" href={`/reviews/new?application=${application.id}`}>Leave verified review</Link>}
+    </article>
+  ))}</div>;
 }
 function Empty({
   title,

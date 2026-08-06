@@ -6,6 +6,9 @@ const protectedPages = [
   "/profile",
   "/listings/new",
   "/application",
+  "/messages",
+  "/monitoring",
+  "/reviews/new",
   "/update-password",
 ];
 
@@ -46,7 +49,8 @@ export async function updateSession(request: NextRequest) {
   const authenticated = !error && Boolean(data?.claims?.sub);
   const { pathname } = request.nextUrl;
 
-  if (!authenticated && pathname.startsWith("/api/")) {
+  const isPublicListingRead = request.method === "GET" && (pathname === "/api/listings" || pathname.startsWith("/api/listings/"));
+  if (!authenticated && pathname.startsWith("/api/") && !isPublicListingRead) {
     return NextResponse.json(
       { error: "Authentication required." },
       { status: 401, headers: { "Cache-Control": "private, no-store" } },

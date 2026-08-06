@@ -67,7 +67,7 @@ export default function ProfileReviews({
     };
   }, [profileId]);
   const reviews = [...ownReviews, ...seeded];
-  const [rating, setRating] = useState(5);
+  const [scores, setScores] = useState({ accuracy: 5, communication: 5, care: 5, handover: 5 });
   const [details, setDetails] = useState("");
   const average =
     reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
@@ -77,7 +77,7 @@ export default function ProfileReviews({
     e.preventDefault();
     if (!account) return;
     try {
-      await addProfileReview(profileId, rating, details);
+      await addProfileReview(profileId, scores, details);
       setOwnReviews(await getProfileReviews(profileId));
       setDetails("");
       notify("Your review was added to this profile.");
@@ -154,20 +154,8 @@ export default function ProfileReviews({
           </p>
           {account ? (
             <form onSubmit={submit}>
-              <div
-                className="rating-input"
-                aria-label={`${rating} out of 5 stars`}
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    type="button"
-                    onClick={() => setRating(n)}
-                    aria-label={`${n} stars`}
-                    key={n}
-                  >
-                    <Star fill={n <= rating ? "currentColor" : "none"} />
-                  </button>
-                ))}
+              <div className="category-rating-inputs">
+                {(["accuracy", "communication", "care", "handover"] as const).map((key) => <RatingInput key={key} label={key === "accuracy" ? "Listing accuracy" : key} value={scores[key]} onChange={(value) => setScores((current) => ({ ...current, [key]: value }))} />)}
               </div>
               <textarea
                 className="input"
@@ -197,4 +185,7 @@ function Stars({ value }: { value: number }) {
       ))}
     </span>
   );
+}
+function RatingInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return <div className="category-rating"><span>{label}</span><div className="rating-input" aria-label={`${label}: ${value} out of 5 stars`}>{[1, 2, 3, 4, 5].map((number) => <button type="button" onClick={() => onChange(number)} aria-label={`${number} stars for ${label}`} key={number}><Star fill={number <= value ? "currentColor" : "none"} /></button>)}</div></div>;
 }

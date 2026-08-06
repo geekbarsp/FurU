@@ -11,7 +11,7 @@ import {
   Save,
   ShieldCheck,
 } from "lucide-react";
-import { addListing, useAccount } from "@/lib/furu-store";
+import { addListing, uploadPetPhotos, useAccount } from "@/lib/furu-store";
 const steps = [
   "Pet basics",
   "Their story",
@@ -25,6 +25,7 @@ export default function NewListing() {
   const [done, setDone] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [values, setValues] = useState<Record<string, string>>({
     type: "Dog",
     sex: "Female",
@@ -49,6 +50,7 @@ export default function NewListing() {
     }
     if (!account) return;
     try {
+      const photoUrls = await uploadPetPhotos(photos);
       await addListing({
         id: `listing-${Date.now()}`,
         ownerEmail: account.email,
@@ -60,7 +62,7 @@ export default function NewListing() {
         reason: values.reason,
         status: "Published",
         createdAt: new Date().toISOString(),
-        details: values,
+        details: { ...values, photo_url: photoUrls[0], photos: JSON.stringify(photoUrls) },
       });
       setDone(true);
     } catch (err) {
@@ -366,6 +368,7 @@ export default function NewListing() {
                     accept="image/jpeg,image/png,image/webp"
                     multiple
                     required
+                    onChange={(event) => setPhotos(Array.from(event.target.files || []))}
                   />
                 </div>
                 <div className="review-summary">

@@ -10,6 +10,42 @@ const applicationSchema = z.object({
 
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
+export async function GET() {
+  const auth = await getAuthContext();
+  if (!auth) return NextResponse.json({ error: "Authentication required." }, { status: 401, headers: privateHeaders });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("adoption_applications")
+    .select("id,applicant_id,listing_id,pet_name,status,answers,submitted_at,updated_at,pet_listings(name,owner_id)")
+    .order("submitted_at", { ascending: false });
+  if (error) return NextResponse.json({ error: "Applications could not be loaded." }, { status: 400, headers: privateHeaders });
+  return NextResponse.json((data || []).map((row) => {
+    const relation = row.pet_listings as unknown as { owner_id?: string } | { owner_id?: string }[] | null;
+    const ownerId = Array.isArray(relation) ? relation[0]?.owner_id : relation?.owner_id;
+    return { ...row, is_owner: ownerId === auth.userId };
+  }), { headers: privateHeaders });
+}
+
+const statusSchema = z.object({
+  applicationId: z.string().uuid(),
+  status: z.enum(["Monitoring", "Completed", "Declined"]),
+});
+
+export async function PATCH(request: Request) {
+  const auth = await getAuthContext();
+  if (!auth) return NextResponse.json({ error: "Authentication required." }, { status: 401, headers: privateHeaders });
+  if (!hasCapability(auth, ["guardian", "welfare_org"])) return NextResponse.json({ error: "Guardian access required." }, { status: 403, headers: privateHeaders });
+  const parsed = statusSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid application update." }, { status: 400, headers: privateHeaders });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("set_application_status", {
+    target_application: parsed.data.applicationId,
+    next_status: parsed.data.status,
+  });
+  if (error) return NextResponse.json({ error: "This application could not be updated." }, { status: 400, headers: privateHeaders });
+  return NextResponse.json(data, { headers: privateHeaders });
+}
+
 export async function POST(request: Request) {
   const auth = await getAuthContext();
   if (!auth) {
