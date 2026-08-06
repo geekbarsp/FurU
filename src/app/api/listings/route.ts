@@ -5,12 +5,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listingRowToPet } from "@/lib/data";
 
 const listingSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  type: z.string().trim().min(1).max(40),
-  breed: z.string().trim().min(1).max(100),
-  age: z.string().trim().min(1).max(60),
-  location: z.string().trim().min(1).max(160),
-  reason: z.string().trim().min(10).max(4000),
+  name: z.string().trim().min(1, "Pet name is required.").max(80),
+  type: z.string().trim().min(1, "Animal type is required.").max(40),
+  breed: z.string().trim().min(1, "Breed or mix is required.").max(100),
+  age: z.string().trim().min(1, "Age is required.").max(60),
+  location: z.string().trim().min(1, "City or municipality is required.").max(160),
+  reason: z.string().trim().min(10, "The rehoming reason must contain at least 10 characters.").max(4000),
   details: z.record(z.string(), z.string()).default({}),
 });
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const parsed = listingSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "The listing details are invalid." },
+      { error: parsed.error.issues[0]?.message || "The listing details are invalid." },
       { status: 400, headers: privateHeaders },
     );
   }

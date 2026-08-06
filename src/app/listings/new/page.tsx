@@ -49,17 +49,30 @@ export default function NewListing() {
       return;
     }
     if (!account) return;
+    const location = (values.location || account.location).trim();
+    const name = (values.name || "").trim();
+    const breed = (values.breed || "").trim();
+    const age = (values.age || "").trim();
+    const reason = (values.reason || "").trim();
+    if (!name || !breed || !age || !location) {
+      setError("Complete the pet name, breed, age, and city before publishing.");
+      return;
+    }
+    if (reason.length < 10) {
+      setError("Please explain the rehoming reason using at least 10 characters.");
+      return;
+    }
     try {
       const photoUrls = await uploadPetPhotos(photos);
       await addListing({
         id: `listing-${Date.now()}`,
         ownerEmail: account.email,
-        name: values.name,
+        name,
         type: values.type,
-        breed: values.breed,
-        age: values.age,
-        location: values.location,
-        reason: values.reason,
+        breed,
+        age,
+        location,
+        reason,
         status: "Published",
         createdAt: new Date().toISOString(),
         details: { ...values, photo_url: photoUrls[0], photos: JSON.stringify(photoUrls) },
