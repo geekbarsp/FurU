@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, CheckCircle2, MapPin, ShieldCheck, Star, Syringe } from "lucide-react";
@@ -9,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import PetCard from "@/components/PetCard";
 import PetProfileActions from "@/components/PetProfileActions";
 import ProfileReviews from "@/components/ProfileReviews";
+import SafePetImage from "@/components/SafePetImage";
 
 export function generateStaticParams() {
   return pets.map((pet) => ({ id: pet.id }));
@@ -49,7 +49,7 @@ export default async function PetProfile({ params }: { params: Promise<{ id: str
           <div className="pet-gallery">
             {pet.photos.map((photo, index) => (
               <div className={index === 0 ? "pet-gallery-main" : "pet-gallery-small"} key={`${photo}-${index}`}>
-                <Image src={photo} alt={`${pet.name} adoption photo ${index + 1}`} fill priority={index === 0} sizes={index === 0 ? "(max-width: 900px) 100vw, 58vw" : "30vw"} />
+                <SafePetImage src={photo} alt={`${pet.name} adoption photo ${index + 1}`} priority={index === 0} sizes={index === 0 ? "(max-width: 900px) 100vw, 58vw" : "30vw"} />
               </div>
             ))}
             <span className="photo-note">Verified listing · {pet.photos.length} photos</span>

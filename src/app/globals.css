@@ -4134,6 +4134,8 @@ body:before {
 .pet-gallery { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 460px 185px; gap: 12px; position: sticky; top: 105px; }
 .pet-gallery > div { position: relative; border-radius: 25px; overflow: hidden; background: var(--sage); }
 .pet-gallery img { object-fit: cover; }
+.pet-image-fallback { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 9px; color: var(--muted); background: linear-gradient(145deg, var(--sage), #f4ede2); font-weight: 700; font-size: .78rem; }
+.pet-image-fallback svg { width: 34px; height: 34px; color: var(--green); opacity: .72; }
 .pet-gallery-small:nth-of-type(2) img { object-position: 35% 45%; transform: scale(1.08); }
 .pet-gallery-small:nth-of-type(3) img { object-position: 65% 55%; transform: scale(1.13); }
 .pet-gallery-main { grid-column: 1 / -1; }

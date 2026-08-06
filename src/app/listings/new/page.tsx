@@ -378,7 +378,7 @@ export default function NewListing() {
                   </p>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept=".jpg,.jpeg,.png,.webp,.gif,.avif,image/jpeg,image/png,image/webp,image/gif,image/avif"
                     multiple
                     required
                     onChange={(event) => setPhotos(Array.from(event.target.files || []))}

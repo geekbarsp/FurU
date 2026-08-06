@@ -1,7 +1,7 @@
 -- FurU Priority 1 marketplace flows. Apply after the core and auth migrations.
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-values('pet-photos','pet-photos',true,8388608,array['image/jpeg','image/png','image/webp'])
+values('pet-photos','pet-photos',true,8388608,array['image/jpeg','image/png','image/webp','image/gif','image/avif'])
 on conflict(id) do update set public=excluded.public,file_size_limit=excluded.file_size_limit,allowed_mime_types=excluded.allowed_mime_types;
 drop policy if exists "Pet photos are public" on storage.objects;
 create policy "Pet photos are public" on storage.objects for select to anon,authenticated using (bucket_id='pet-photos');

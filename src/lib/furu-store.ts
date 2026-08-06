@@ -473,8 +473,9 @@ export async function uploadPetPhotos(files: File[]) {
     })));
   }
   const urls: string[] = [];
+  const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
   for (const file of files.slice(0, 5)) {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/) || file.size > 8 * 1024 * 1024) throw new Error("Each photo must be JPG, PNG, or WebP and no larger than 8 MB.");
+    if (!allowedTypes.has(file.type) || file.size > 8 * 1024 * 1024) throw new Error("Each photo must be JPEG, PNG, WebP, GIF, or AVIF and no larger than 8 MB.");
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${state.account.id}/${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from("pet-photos").upload(path, file, { contentType: file.type, upsert: false });

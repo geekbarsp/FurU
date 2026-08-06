@@ -1,10 +1,10 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Heart, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Pet } from "@/lib/data";
 import { getFavoritePetKeys, setFavorite } from "@/lib/furu-store";
+import SafePetImage from "@/components/SafePetImage";
 
 export default function PetCard({ pet }: { pet: Pet }) {
   const [favorite, setFavoriteState] = useState(false);
@@ -29,10 +29,9 @@ export default function PetCard({ pet }: { pet: Pet }) {
   return (
     <article className="pet-card">
       <div className="pet-image">
-        <Image
+        <SafePetImage
           src={pet.image}
           alt={`${pet.name}, a ${pet.breed} available for adoption`}
-          fill
           sizes="(max-width: 620px) 100vw, (max-width: 900px) 50vw, 33vw"
         />
         <button
