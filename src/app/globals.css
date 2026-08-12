@@ -3655,21 +3655,21 @@ body:before {
   border-radius: 0;
 }
 .intro-logo {
-  width: min(760px, 88vw);
-  aspect-ratio: 1678 / 937;
-  overflow: hidden;
-  border-radius: 32px;
-  box-shadow: 0 28px 70px rgba(83, 61, 12, 0.2);
+  width: min(640px, 84vw);
+  aspect-ratio: 2.33;
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
 }
 .intro-logo img {
-  object-fit: cover;
+  object-fit: contain;
   transform: none;
-  filter: none;
+  filter: drop-shadow(0 20px 28px rgba(40, 47, 39, 0.16));
 }
 @media (max-width: 620px) {
   .intro-logo {
-    width: 90vw;
-    border-radius: 20px;
+    width: 84vw;
+    border-radius: 0;
   }
 }
 
