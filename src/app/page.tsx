@@ -23,7 +23,7 @@ import {
 import PetCard from "@/components/PetCard";
 import { pets } from "@/lib/data";
 import { useAccount } from "@/lib/furu-store";
-import logo4k from "../../public/images/logo-4k-transparent.png";
+import responsibleBanner from "../../public/images/responsible-banner.png";
 
 const PetScene = dynamic(() => import("@/components/PetScene"), {
   ssr: false,
@@ -112,12 +112,12 @@ export default function HomePage() {
           >
             <div className="intro-logo">
               <Image
-                src={logo4k}
-                alt="FurU — a caring home for every pet"
+                src={responsibleBanner}
+                alt="Be responsible — FurU's animal-welfare commitment"
                 fill
                 priority
                 quality={90}
-                sizes="(max-width: 700px) 92vw, 720px"
+                sizes="(max-width: 700px) 92vw, 760px"
               />
             </div>
             <span className="eyebrow">
