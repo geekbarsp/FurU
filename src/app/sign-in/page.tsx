@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Eye, EyeOff, Heart } from "lucide-react";
+import { HumanCheck } from "@/components/HumanCheck";
 import {
   sendEmailOtp,
   signIn,
@@ -16,6 +17,8 @@ export default function SignIn() {
   const [method, setMethod] = useState<"otp" | "password">("otp");
   const [otpSent, setOtpSent] = useState(false);
   const [otpEmail, setOtpEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   function destination() {
     const next = new URLSearchParams(window.location.search).get("next");
@@ -30,13 +33,21 @@ export default function SignIn() {
     setError("");
     const data = new FormData(e.currentTarget);
     const email = String(data.get("email")).trim().toLowerCase();
+    const needsCaptcha = method === "password" || !otpSent;
+
+    if (needsCaptcha && !captchaToken) {
+      setBusy(false);
+      setError("Complete the ‘Are you human?’ check before continuing.");
+      return;
+    }
 
     try {
       if (method === "otp") {
         if (!otpSent) {
-          await sendEmailOtp(email);
+          await sendEmailOtp(email, captchaToken);
           setOtpEmail(email);
           setOtpSent(true);
+          setCaptchaToken("");
           setBusy(false);
           return;
         }
@@ -45,7 +56,7 @@ export default function SignIn() {
         return;
       }
 
-      if (await signIn(email, String(data.get("password")))) {
+      if (await signIn(email, String(data.get("password")), captchaToken)) {
         location.href = destination();
         return;
       }
@@ -55,12 +66,18 @@ export default function SignIn() {
     } catch (err) {
       setBusy(false);
       setError(err instanceof Error ? err.message : "Unable to sign in.");
+      if (needsCaptcha) {
+        setCaptchaToken("");
+        setCaptchaKey((current) => current + 1);
+      }
     }
   }
 
   function switchMethod(next: "otp" | "password") {
     setMethod(next);
     setOtpSent(false);
+    setCaptchaToken("");
+    setCaptchaKey((current) => current + 1);
     setError("");
   }
 
@@ -156,12 +173,19 @@ export default function SignIn() {
             </div>
           )}
 
+          {(method === "password" || !otpSent) && (
+            <HumanCheck key={captchaKey} onChange={setCaptchaToken} />
+          )}
+
           {error && (
             <p className="error" role="alert">
               {error}
             </p>
           )}
-          <button className="btn btn-primary full-btn" disabled={busy}>
+          <button
+            className="btn btn-primary full-btn"
+            disabled={busy || ((method === "password" || !otpSent) && !captchaToken)}
+          >
             {busy
               ? "Please wait…"
               : method === "otp" && !otpSent

@@ -43,6 +43,7 @@ Fill in:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-cloudflare-turnstile-site-key
 ```
 
 Then restart the development server:
@@ -54,6 +55,12 @@ npm run dev
 The migration creates profiles, listings, adoption applications, reviews, favorites, conversations, messages, monitoring check-ins, reports, and the avatar bucket. Row Level Security restricts private records to the appropriate signed-in users. Never put a Supabase service-role key in a `NEXT_PUBLIC_` variable or browser code.
 
 ### Auth configuration
+
+Create a Cloudflare Turnstile widget for the app's hostnames, copy its site key
+into `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, then enable Turnstile in Supabase under
+**Authentication → Bot and Abuse Protection** using the matching secret key.
+Local development uses Cloudflare's always-pass test widget when no site key is
+set; production requires a real site key.
 
 In **Authentication → URL Configuration**, set the production Site URL and add these redirect URLs (plus the equivalent preview URLs):
 
@@ -79,7 +86,7 @@ Existing demo accounts stored in a browser cannot be safely migrated because the
 
 ### Vercel
 
-In the Vercel project, open **Settings → Environment Variables** and add both variables above for Production and Preview. Redeploy the latest commit. Also set the Supabase **Authentication → URL Configuration** Site URL to the production Vercel address and add the preview/localhost callback URLs you use.
+In the Vercel project, open **Settings → Environment Variables** and add all three variables above for Production and Preview. Redeploy the latest commit. Also set the Supabase **Authentication → URL Configuration** Site URL to the production Vercel address and add the preview/localhost callback URLs you use.
 
 Production verification:
 

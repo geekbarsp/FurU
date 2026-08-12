@@ -248,7 +248,10 @@ export function isUsingSupabase() {
   return isSupabaseConfigured;
 }
 
-export async function createAccount(input: CreateAccountInput) {
+export async function createAccount(
+  input: CreateAccountInput,
+  captchaToken: string,
+) {
   const username = input.name.trim();
   if (username.length < 4 || username.length > 15)
     throw new Error("Username must be 4–15 characters.");
@@ -258,6 +261,7 @@ export async function createAccount(input: CreateAccountInput) {
       email: input.email,
       password: input.password,
       options: {
+        captchaToken,
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         data: {
           username,
@@ -299,12 +303,17 @@ export async function createAccount(input: CreateAccountInput) {
   await reload();
   return { needsEmailConfirmation: false };
 }
-export async function signIn(email: string, password: string) {
+export async function signIn(
+  email: string,
+  password: string,
+  captchaToken: string,
+) {
   const supabase = getSupabaseBrowserClient();
   if (supabase) {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { captchaToken },
     });
     if (error) return false;
     await reload();
@@ -324,12 +333,13 @@ export async function signIn(email: string, password: string) {
   return true;
 }
 
-export async function sendEmailOtp(email: string) {
+export async function sendEmailOtp(email: string, captchaToken: string) {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: {
+      captchaToken,
       shouldCreateUser: false,
       emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
     },
@@ -374,12 +384,15 @@ export async function resendSignupCode(email: string) {
   if (error) throw error;
 }
 
-export async function requestPasswordReset(email: string) {
+export async function requestPasswordReset(email: string, captchaToken: string) {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase.auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
-    { redirectTo: `${window.location.origin}/auth/callback?next=/update-password` },
+    {
+      redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+      captchaToken,
+    },
   );
   if (error) throw error;
 }

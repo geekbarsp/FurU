@@ -2,11 +2,25 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Heart } from "lucide-react";
+import { HumanCheck } from "@/components/HumanCheck";
 import {
   createAccount,
   resendSignupCode,
   verifySignupOtp,
 } from "@/lib/furu-store";
+
+function readableError(error: unknown, fallback: string) {
+  const message =
+    error instanceof Error
+      ? error.message.trim()
+      : typeof error === "string"
+        ? error.trim()
+        : "";
+
+  return !message || message === "{}" || message === "[object Object]"
+    ? fallback
+    : message;
+}
 
 export default function SignUp() {
   const [step, setStep] = useState(1);
@@ -16,6 +30,9 @@ export default function SignUp() {
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [resent, setResent] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [form, setForm] = useState({
     purpose: "Rehome a pet" as "Rehome a pet" | "Adopt a pet" | "Both",
     accountRole: "guardian" as
@@ -44,6 +61,11 @@ export default function SignUp() {
       setError("Passwords do not match.");
       return;
     }
+    if (!captchaToken) {
+      setError("Complete the ‘Are you human?’ check before continuing.");
+      return;
+    }
+    setAccountBusy(true);
     try {
       const result = await createAccount({
         name: form.name.trim(),
@@ -57,13 +79,20 @@ export default function SignUp() {
           form.accountRole === "welfare_org"
             ? form.organizationName.trim()
             : undefined,
-      });
+      }, captchaToken);
       setConfirmEmail(result.needsEmailConfirmation);
       setDone(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to create your account.",
+        readableError(
+          err,
+          "Unable to create your account. Please try again in a moment.",
+        ),
       );
+      setCaptchaToken("");
+      setCaptchaKey((current) => current + 1);
+    } finally {
+      setAccountBusy(false);
     }
   }
   async function verifyCode(e: React.FormEvent) {
@@ -74,7 +103,9 @@ export default function SignUp() {
       await verifySignupOtp(form.email, verificationCode);
       setConfirmEmail(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The verification code is invalid or expired.");
+      setError(
+        readableError(err, "The verification code is invalid or expired."),
+      );
     } finally {
       setVerificationBusy(false);
     }
@@ -86,7 +117,7 @@ export default function SignUp() {
       await resendSignupCode(form.email);
       setResent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "A new code could not be sent.");
+      setError(readableError(err, "A new code could not be sent."));
     } finally {
       setVerificationBusy(false);
     }
@@ -288,6 +319,9 @@ export default function SignUp() {
                 <input type="checkbox" required /> I agree to FurU’s terms,
                 privacy policy, and animal welfare commitment.
               </label>
+              <div className="wide">
+                <HumanCheck key={captchaKey} onChange={setCaptchaToken} />
+              </div>
             </div>
           )}
           {error && (
@@ -307,8 +341,15 @@ export default function SignUp() {
             ) : (
               <span />
             )}
-            <button className="btn btn-primary">
-              {step === 3 ? "Create my account" : "Continue"}
+            <button
+              className="btn btn-primary"
+              disabled={accountBusy || (step === 3 && !captchaToken)}
+            >
+              {accountBusy
+                ? "Creating account…"
+                : step === 3
+                  ? "Create my account"
+                  : "Continue"}
               <ArrowRight size={16} />
             </button>
           </div>
